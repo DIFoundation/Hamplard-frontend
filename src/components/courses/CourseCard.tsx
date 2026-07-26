@@ -6,6 +6,7 @@ import { Clock, Heart, Star, Users } from 'lucide-react';
 import {
   cn, courseTotalMins, formatUsdc, levelChip,
 } from '@/lib/utils';
+import { useIsWishlisted, useWishlistStore } from '@/lib/hooks/use-wishlist-store';
 import type { Course } from '@/types';
 
 type BadgeVariant = 'bestseller' | 'new' | 'hot';
@@ -26,7 +27,8 @@ export function CourseCard({ course, href, showProgress }: Props) {
   const dest = href ?? `/dashboard/courses/${course.id}`;
   const mins = courseTotalMins(course.totalDuration ?? 0);
 
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const isWishlisted  = useIsWishlisted(course.id);
+  const toggleWishlistId = useWishlistStore((state) => state.toggle);
   const [isHovered, setIsHovered]     = useState(false);
   const [showPreview, setShowPreview]  = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,9 +52,10 @@ export function CourseCard({ course, href, showProgress }: Props) {
   }
 
   function toggleWishlist(e: React.MouseEvent) {
+    // The card is wrapped in a Link — stop the click from navigating away.
     e.preventDefault();
     e.stopPropagation();
-    setIsWishlisted((prev) => !prev);
+    toggleWishlistId(course.id);
   }
 
   useEffect(() => {
