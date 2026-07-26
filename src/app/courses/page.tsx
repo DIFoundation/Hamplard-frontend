@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { coursesApi } from '@/lib/api/services';
@@ -105,6 +105,34 @@ function Pagination({
 
 // ── Main page ─────────────────────────────────────────────────────
 export default function CourseBrowsePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-ink-50 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl animate-pulse space-y-6">
+            <div className="h-8 w-48 rounded bg-ink-100" />
+            <div className="h-12 w-full max-w-lg rounded-xl bg-ink-100" />
+            <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="h-80 rounded-xl bg-ink-100" />
+              <div className="space-y-4">
+                <div className="h-10 w-40 rounded bg-ink-100" />
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="h-56 rounded-xl bg-ink-100" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <CourseBrowsePageContent />
+    </Suspense>
+  );
+}
+
+function CourseBrowsePageContent() {
   const router     = useRouter();
   const pathname   = usePathname();
   const searchParams = useSearchParams();
