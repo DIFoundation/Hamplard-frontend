@@ -4,11 +4,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight,
-  Download, Loader2, ArrowLeft,
+  Download, Loader2, ArrowLeft, Award,
 } from 'lucide-react';
 import Link from 'next/link';
 import { coursesApi, enrollmentsApi, lessonsApi } from '@/lib/api/services';
 import { formatDuration, cn } from '@/lib/utils';
+import CourseCompletionModal from '@/components/learn/CourseCompletionModal';
 import type { Course, Enrollment, Lesson, LessonProgress } from '@/types';
 
 export default function LearnPage() {
@@ -20,7 +21,10 @@ export default function LearnPage() {
   const [expanded,    setExpanded]    = useState<Record<string, boolean>>({});
   const [loading,     setLoading]     = useState(true);
   const [marking,     setMarking]     = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const previousCompletedCountRef = useRef<number | null>(null);
+  const hasInitializedCompletionStateRef = useRef(false);
 
   useEffect(() => {
     Promise.all([
@@ -45,6 +49,36 @@ export default function LearnPage() {
     return () => { if (progressRef.current) clearInterval(progressRef.current); };
   }, [id]);
 
+  useEffect(() => {
+    if (!course || !enrollment) return;
+
+    const totalLessons = course.modules?.flatMap((m) => m.lessons).length ?? 0;
+    const completedCount = enrollment.lessonProgress?.filter((p) => p.completed).length ?? 0;
+    const isComplete = totalLessons > 0 && completedCount >= totalLessons;
+    const previouslyIncomplete = previousCompletedCountRef.current === null || previousCompletedCountRef.current < totalLessons;
+    const newlyCompleted = hasInitializedCompletionStateRef.current && previouslyIncomplete && isComplete;
+
+    previousCompletedCountRef.current = completedCount;
+    hasInitializedCompletionStateRef.current = true;
+
+    if (!isComplete) {
+      setShowCompletionModal(false);
+      return;
+    }
+
+    const storageKey = `course-completion:${course.id}`;
+    const hasSeenModal = typeof window !== 'undefined' && window.localStorage.getItem(storageKey) === 'true';
+
+    if (newlyCompleted && !hasSeenModal) {
+      setShowCompletionModal(true);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, 'true');
+      }
+    } else {
+      setShowCompletionModal(false);
+    }
+  }, [course, enrollment]);
+
   const isLessonCompleted = (lessonId: string) =>
     enrollment?.lessonProgress?.some((p) => p.lessonId === lessonId && p.completed) ?? false;
 
@@ -65,6 +99,8 @@ export default function LearnPage() {
   const completedCount = enrollment?.lessonProgress?.filter((p) => p.completed).length ?? 0;
   const progress       = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
+  const handleCloseCompletionModal = () => setShowCompletionModal(false);
+
   if (loading) return (
     <div className="flex justify-center py-16">
       <Loader2 className="w-6 h-6 text-saffron-500 animate-spin" />
@@ -75,6 +111,14 @@ export default function LearnPage() {
 
   return (
     <div className="-m-6 flex h-[calc(100vh-3.5rem)] overflow-hidden">
+      {course && (
+        <CourseCompletionModal
+          open={showCompletionModal}
+          courseTitle={course.title}
+          courseId={course.id}
+          onClose={handleCloseCompletionModal}
+        />
+      )}
       {/* Lesson sidebar */}
       <aside className="w-72 bg-white border-r border-ink-100 flex flex-col flex-shrink-0 overflow-y-auto">
         {/* Header */}
@@ -227,7 +271,7 @@ export default function LearnPage() {
             )}
 
             {/* Completion celebration */}
-            {progress === 100 && (
+            {progress === 100 && !showCompletionModal && (
               <div className="card p-6 bg-gradient-to-br from-saffron-50 to-leaf-50 border-saffron-100 text-center">
                 <div className="text-4xl mb-3">🎓</div>
                 <h2 className="font-display text-xl font-semibold text-ink-900 mb-2">
@@ -252,6 +296,3 @@ export default function LearnPage() {
     </div>
   );
 }
-
-// Need to import Award inside LearnPage
-import { Award } from 'lucide-react';
