@@ -234,7 +234,7 @@ export default function LearnPage() {
                   Course complete!
                 </h2>
                 <p className="text-sm text-ink-500 mb-4">
-                  You've finished all lessons. Your certificate will be issued shortly.
+                  You&apos;ve finished all lessons. Your certificate will be issued shortly.
                 </p>
                 <Link href="/dashboard/certificates" className="btn-primary inline-flex">
                   <Award className="w-4 h-4" />
