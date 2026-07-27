@@ -4,12 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { coursesApi } from '@/lib/api/services';
 import { CourseCard } from '@/components/courses/CourseCard';
+import { CoursePreviewModal } from '@/components/courses/CoursePreviewModal';
 
 export default function CourseDetailPage() {
   const params = useParams();
   const id = (params as any)?.id as string | undefined;
   const [course, setCourse] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -45,7 +47,19 @@ export default function CourseDetailPage() {
   ];
 
   return (
-    <div className="grid grid-cols-12 gap-6">
+    <>
+      {/* Preview Modal */}
+      {course.previewVideoUrl && (
+        <CoursePreviewModal
+          isOpen={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          videoUrl={course.previewVideoUrl}
+          courseTitle={course.title}
+          instructorName={course.instructor?.name}
+        />
+      )}
+
+      <div className="grid grid-cols-12 gap-6">
       <main className="col-span-12 lg:col-span-8">
         {/* Banner */}
         <div className="rounded-xl overflow-hidden bg-gradient-to-br from-saffron-100 to-saffron-200 mb-6">
@@ -149,7 +163,13 @@ export default function CourseDetailPage() {
               </div>
             </div>
             <button className="btn-primary w-full mt-4">Enroll now</button>
-            <button className="btn-secondary w-full mt-2">Preview course</button>
+            <button
+              onClick={() => setPreviewOpen(true)}
+              disabled={!course.previewVideoUrl}
+              className="btn-secondary w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {course.previewVideoUrl ? 'Preview this course' : 'No preview available'}
+            </button>
           </div>
 
           <div className="card p-4">
@@ -173,6 +193,6 @@ export default function CourseDetailPage() {
           <button className="btn-primary px-4 py-2">Enroll</button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
