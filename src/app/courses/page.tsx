@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { coursesApi } from '@/lib/api/services';
 import { CourseCard } from '@/components/courses/CourseCard';
-import { CourseCardSkeleton } from '@/components/courses/CourseCardSkeleton';
+import { CourseCardSkeleton } from '@/components/skeletons';
 import { FilterSidebar } from '@/components/courses/FilterSidebar';
 import { Pagination } from '@/components/ui/Pagination';
 import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll';
@@ -324,9 +324,9 @@ function CourseBrowsePageContent() {
 
             {/* ── Course grid ── */}
             {loading ? (
-              /* First-page skeleton — full grid */
+              /* First-page skeleton — 4-column grid of 8 cards */
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                {Array.from({ length: 8 }).map((_, i) => (
                   <CourseCardSkeleton key={i} />
                 ))}
               </div>

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { coursesApi } from '@/lib/api/services';
 import { CourseCard } from '@/components/courses/CourseCard';
+import { CourseDetailSkeleton } from '@/components/skeletons';
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -22,16 +23,7 @@ export default function CourseDetailPage() {
 
   if (!id) return <div className="p-6">Missing course id</div>;
 
-  if (loading) return (
-    <div className="p-6">
-      <div className="h-48 bg-ink-100 rounded-md animate-pulse" />
-      <div className="mt-4 space-y-2">
-        <div className="h-6 bg-ink-100 w-1/3 rounded animate-pulse" />
-        <div className="h-4 bg-ink-100 w-1/4 rounded animate-pulse" />
-        <div className="h-3 bg-ink-100 w-full rounded animate-pulse" />
-      </div>
-    </div>
-  );
+  if (loading) return <CourseDetailSkeleton />;
 
   if (!course) return (
     <div className="card p-8 text-center">
