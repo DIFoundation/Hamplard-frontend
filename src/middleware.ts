@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/auth/login', '/courses', '/certificates'];
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/auth/login', '/auth/signup', '/courses', '/certificates'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get('hamplard_token')?.value;
   if (!token && pathname.startsWith('/dashboard')) {
-    const url = new URL('/auth/login', request.url);
+    const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);
   }

@@ -4,27 +4,34 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Facebook, Mail } from 'lucide-react';
 
-type LoginValues = {
+type SignupValues = {
+  name: string;
   email: string;
   password: string;
-  rememberMe: boolean;
+  acceptTerms: boolean;
 };
 
-type LoginErrors = Partial<Record<keyof LoginValues, string>>;
+type SignupErrors = Partial<Record<keyof SignupValues, string>>;
 
-export default function LoginPage() {
-  const [values, setValues] = useState<LoginValues>({
+export default function SignupPage() {
+  const [values, setValues] = useState<SignupValues>({
+    name: '',
     email: '',
     password: '',
-    rememberMe: false,
+    acceptTerms: false,
   });
-  const [errors, setErrors] = useState<LoginErrors>({});
+  const [errors, setErrors] = useState<SignupErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hasErrors = useMemo(() => Object.values(errors).some(Boolean), [errors]);
 
-  const validate = (nextValues: LoginValues) => {
-    const nextErrors: LoginErrors = {};
+  const validate = (nextValues: SignupValues) => {
+    const nextErrors: SignupErrors = {};
+    if (!nextValues.name.trim()) {
+      nextErrors.name = 'Full name is required.';
+    } else if (nextValues.name.trim().length < 2) {
+      nextErrors.name = 'Enter your full name.';
+    }
     if (!nextValues.email.trim()) {
       nextErrors.email = 'Email is required.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextValues.email)) {
@@ -35,6 +42,10 @@ export default function LoginPage() {
     } else if (nextValues.password.length < 8) {
       nextErrors.password = 'Password must be at least 8 characters.';
     }
+    if (!nextValues.acceptTerms) {
+      nextErrors.acceptTerms = 'You must accept the terms to continue.';
+    }
+
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -56,12 +67,31 @@ export default function LoginPage() {
             <Link href="/" className="mb-8 inline-block font-display text-3xl font-bold text-[#26215C]">
               Hamplard
             </Link>
-            <h1 className="mb-2 text-3xl font-bold text-[#26215C]">Welcome back</h1>
+            <h1 className="mb-2 text-3xl font-bold text-[#26215C]">Create your account</h1>
             <p className="mb-6 text-sm text-[#554F99]">
-              Continue your learning journey and pick up where you left off.
+              Join Hamplard and start learning practical, career-ready skills.
             </p>
 
             <form className="space-y-4" onSubmit={onSubmit} noValidate>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[#26215C]" htmlFor="name">
+                  Full name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={values.name}
+                  onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
+                  onBlur={() => validate(values)}
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm text-[#26215C] outline-none transition ${
+                    errors.name ? 'border-red-400 bg-red-50/40' : 'border-[#D3D0F2] focus:border-[#7F77DD]'
+                  }`}
+                  placeholder="Your full name"
+                  aria-invalid={!!errors.name}
+                />
+                {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
+              </div>
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-[#26215C]" htmlFor="email">
                   Email
@@ -94,33 +124,35 @@ export default function LoginPage() {
                   className={`w-full rounded-xl border px-4 py-2.5 text-sm text-[#26215C] outline-none transition ${
                     errors.password ? 'border-red-400 bg-red-50/40' : 'border-[#D3D0F2] focus:border-[#7F77DD]'
                   }`}
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                   aria-invalid={!!errors.password}
                 />
                 {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-2 text-sm text-[#26215C]">
-                  <input
-                    type="checkbox"
-                    checked={values.rememberMe}
-                    onChange={(event) => setValues((prev) => ({ ...prev, rememberMe: event.target.checked }))}
-                    className="h-4 w-4 rounded border-[#B3ADDF] text-[#7F77DD] focus:ring-[#7F77DD]"
-                  />
-                  Remember me
-                </label>
-                <Link href="#" className="text-sm font-medium text-[#3C3489] hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
+              <label className="inline-flex items-start gap-2 text-sm text-[#26215C]">
+                <input
+                  type="checkbox"
+                  checked={values.acceptTerms}
+                  onChange={(event) => setValues((prev) => ({ ...prev, acceptTerms: event.target.checked }))}
+                  className="mt-0.5 h-4 w-4 rounded border-[#B3ADDF] text-[#7F77DD] focus:ring-[#7F77DD]"
+                />
+                <span>
+                  I agree to the{' '}
+                  <Link href="#" className="font-medium text-[#3C3489] hover:underline">
+                    terms and privacy policy
+                  </Link>
+                  .
+                </span>
+              </label>
+              {errors.acceptTerms && <p className="text-xs text-red-600">{errors.acceptTerms}</p>}
 
               <button
                 type="submit"
                 className="w-full rounded-xl bg-[#7F77DD] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#3C3489]"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Signing in...' : 'Login'}
+                {isSubmitting ? 'Creating account...' : 'Signup'}
               </button>
 
               <div className="relative py-2">
@@ -149,9 +181,9 @@ export default function LoginPage() {
             )}
 
             <p className="mt-6 text-sm text-[#554F99]">
-              New to Hamplard?{' '}
-              <Link href="/auth/signup" className="font-semibold text-[#3C3489] hover:underline">
-                Create an account
+              Already have an account?{' '}
+              <Link href="/login" className="font-semibold text-[#3C3489] hover:underline">
+                Login
               </Link>
             </p>
           </div>
@@ -159,24 +191,17 @@ export default function LoginPage() {
 
         <section className="order-1 flex min-h-[260px] items-center justify-center bg-gradient-to-br from-[#26215C] to-[#3C3489] p-8 lg:order-2">
           <div className="max-w-sm text-white">
-            <p className="mb-2 text-xs uppercase tracking-[0.18em] text-[#EEEDFE]">Learn smarter</p>
+            <p className="mb-2 text-xs uppercase tracking-[0.18em] text-[#EEEDFE]">Get started</p>
             <h2 className="mb-4 font-display text-4xl font-bold leading-tight">
-              Build practical skills that move your career forward.
+              Your future skills start with one account.
             </h2>
             <p className="text-sm leading-relaxed text-[#EEEDFE]">
-              Access guided courses, track progress, and earn trusted certificates with Hamplard.
+              Learn from trusted instructors, earn certificates, and grow your confidence with every lesson.
             </p>
-            <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-              {[
-                ['10k+', 'Students'],
-                ['200+', 'Courses'],
-                ['95%', 'Completion'],
-              ].map(([value, label]) => (
-                <div key={label} className="rounded-xl bg-white/10 px-3 py-2">
-                  <p className="text-base font-semibold">{value}</p>
-                  <p className="text-xs text-[#EEEDFE]">{label}</p>
-                </div>
-              ))}
+            <div className="mt-6 space-y-2 text-sm text-[#EEEDFE]">
+              <p className="rounded-lg bg-white/10 px-3 py-2">Structured courses and practical projects</p>
+              <p className="rounded-lg bg-white/10 px-3 py-2">Track milestones from beginner to advanced</p>
+              <p className="rounded-lg bg-white/10 px-3 py-2">Join a community focused on real-world skills</p>
             </div>
           </div>
         </section>

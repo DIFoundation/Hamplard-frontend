@@ -4,5 +4,11 @@ const nextConfig = {
   images: {
     domains: ['localhost', 'hamplard.com'],
   },
+  async redirects() {
+    return [
+      { source: '/auth/login', destination: '/login', permanent: true },
+      { source: '/auth/signup', destination: '/signup', permanent: true },
+    ];
+  },
 };
 module.exports = nextConfig;
