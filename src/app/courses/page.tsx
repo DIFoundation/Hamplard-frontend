@@ -1,38 +1,26 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { coursesApi } from '@/lib/api/services';
 import { CourseCard } from '@/components/courses/CourseCard';
+import { CourseCardSkeleton } from '@/components/courses/CourseCardSkeleton';
 import { FilterSidebar } from '@/components/courses/FilterSidebar';
+import { Pagination } from '@/components/ui/Pagination';
+import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll';
 import { cn } from '@/lib/utils';
 import type { Course, Category } from '@/types';
 
 // ── Constants ─────────────────────────────────────────────────────
 const SORT_OPTIONS = [
-  { label: 'Most Relevant',  value: 'relevant'  },
-  { label: 'Highest Rated',  value: 'rated'     },
-  { label: 'Most Popular',   value: 'popular'   },
-  { label: 'Newest',         value: 'newest'    },
+  { label: 'Most Relevant', value: 'relevant' },
+  { label: 'Highest Rated', value: 'rated'    },
+  { label: 'Most Popular',  value: 'popular'  },
+  { label: 'Newest',        value: 'newest'   },
 ] as const;
 
 const PAGE_SIZE = 12;
-
-// ── Skeleton card ─────────────────────────────────────────────────
-function SkeletonCard() {
-  return (
-    <div className="card overflow-hidden animate-pulse">
-      <div className="aspect-video bg-ink-100" />
-      <div className="p-4 space-y-2">
-        <div className="h-3 w-16 rounded-lg bg-ink-100" />
-        <div className="h-4 w-full rounded-lg bg-ink-100" />
-        <div className="h-3 w-3/4 rounded-lg bg-ink-100" />
-        <div className="h-3 w-24 rounded-lg bg-ink-100 mt-3" />
-      </div>
-    </div>
-  );
-}
 
 // ── Active filter chip ────────────────────────────────────────────
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -50,61 +38,38 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
   );
 }
 
-// ── Pagination ────────────────────────────────────────────────────
-function Pagination({
-  page, totalPages, onChange,
-}: {
-  page: number; totalPages: number; onChange: (p: number) => void;
-}) {
-  if (totalPages <= 1) return null;
-
-  const pages = Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-    if (totalPages <= 5) return i + 1;
-    if (page <= 3)       return i + 1;
-    if (page >= totalPages - 2) return totalPages - 4 + i;
-    return page - 2 + i;
-  });
-
+// ── Main page ─────────────────────────────────────────────────────
+export default function CourseBrowsePage() {
+  const router       = useRouter();
+  const pathname     = usePathname();
   return (
-    <div className="flex items-center justify-center gap-1 mt-10">
-      <button
-        onClick={() => onChange(page - 1)}
-        disabled={page === 1}
-        className="btn-secondary p-2 disabled:opacity-40"
-        aria-label="Previous page"
-      >
-        <ChevronLeft className="w-4 h-4" />
-      </button>
-
-      {pages.map(p => (
-        <button
-          key={p}
-          onClick={() => onChange(p)}
-          className={cn(
-            'w-9 h-9 rounded-xl text-sm font-medium transition-all',
-            p === page
-              ? 'bg-saffron-500 text-white shadow-sm'
-              : 'text-ink-600 hover:bg-ink-50',
-          )}
-        >
-          {p}
-        </button>
-      ))}
-
-      <button
-        onClick={() => onChange(page + 1)}
-        disabled={page === totalPages}
-        className="btn-secondary p-2 disabled:opacity-40"
-        aria-label="Next page"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </button>
-    </div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-ink-50 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl animate-pulse space-y-6">
+            <div className="h-8 w-48 rounded bg-ink-100" />
+            <div className="h-12 w-full max-w-lg rounded-xl bg-ink-100" />
+            <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="h-80 rounded-xl bg-ink-100" />
+              <div className="space-y-4">
+                <div className="h-10 w-40 rounded bg-ink-100" />
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="h-56 rounded-xl bg-ink-100" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <CourseBrowsePageContent />
+    </Suspense>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────
-export default function CourseBrowsePage() {
+function CourseBrowsePageContent() {
   const router     = useRouter();
   const pathname   = usePathname();
   const searchParams = useSearchParams();
@@ -114,24 +79,24 @@ export default function CourseBrowsePage() {
   const urlLevel    = searchParams.get('level')    ?? '';
   const urlPrice    = searchParams.get('price')    ?? '';
   const urlSort     = searchParams.get('sort')     ?? 'relevant';
-  const urlPage     = parseInt(searchParams.get('page') ?? '1', 10);
   const urlSearch   = searchParams.get('search')   ?? '';
 
-  const [courses,    setCourses]    = useState<Course[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [total,      setTotal]      = useState(0);
-  const [loading,    setLoading]    = useState(true);
+  const [courses,     setCourses]     = useState<Course[]>([]);
+  const [categories,  setCategories]  = useState<Category[]>([]);
+  const [total,       setTotal]       = useState(0);
+  const [page,        setPage]        = useState(1);
+  const [hasMore,     setHasMore]     = useState(true);
+  const [loading,     setLoading]     = useState(true);   // first-page load
+  const [loadingMore, setLoadingMore] = useState(false);  // subsequent pages
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Push filter changes to URL without full reload
+  // Push filter changes to URL (no page param needed — infinite scroll handles paging)
   const pushParams = useCallback((updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([k, v]) => {
       if (v) { params.set(k, v); }
       else   { params.delete(k); }
     });
-    // Reset to page 1 on filter change (unless explicitly setting page)
-    if (!('page' in updates)) params.set('page', '1');
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }, [router, pathname, searchParams]);
 
@@ -140,60 +105,110 @@ export default function CourseBrowsePage() {
     coursesApi.getCategories().then(setCategories).catch(() => {});
   }, []);
 
-  // Fetch courses when URL params change
+  // Helper: apply client-side sort & price filter
+  const applyClientFilters = useCallback((data: Course[]): Course[] => {
+    let sorted = [...data];
+    if (urlSort === 'popular') {
+      sorted.sort((a, b) => (b.totalEnrollments ?? 0) - (a.totalEnrollments ?? 0));
+    } else if (urlSort === 'newest') {
+      sorted.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    }
+    if (urlPrice) {
+      sorted = sorted.filter((c) => {
+        const p = Number(c.price);
+        if (urlPrice === 'free')    return p === 0;
+        if (urlPrice === 'under20') return p > 0 && p < 20;
+        if (urlPrice === '20to50')  return p >= 20 && p <= 50;
+        if (urlPrice === 'over50')  return p > 50;
+        return true;
+      });
+    }
+    return sorted;
+  }, [urlSort, urlPrice]);
+
+  // Reset + fetch page 1 whenever filters change
   useEffect(() => {
     setLoading(true);
-    coursesApi.list({
-      search:   urlSearch   || undefined,
-      category: urlCategory || undefined,
-      level:    urlLevel    || undefined,
-      page:     urlPage,
-      limit:    PAGE_SIZE,
-    })
-      .then(res => {
-        // Client-side sort (API doesn't support sort param yet)
-        let sorted = [...res.data];
-        if (urlSort === 'popular') {
-          sorted.sort((a, b) => (b.totalEnrollments ?? 0) - (a.totalEnrollments ?? 0));
-        } else if (urlSort === 'newest') {
-          sorted.sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          );
-        } else if (urlSort === 'rated') {
-          // No rating field in type yet — keep original order as fallback
-        }
+    setPage(1);
+    setHasMore(true);
+    setCourses([]);
 
-        // Client-side price filter
-        if (urlPrice) {
-          sorted = sorted.filter(c => {
-            const p = Number(c.price);
-            if (urlPrice === 'free')    return p === 0;
-            if (urlPrice === 'under20') return p > 0 && p < 20;
-            if (urlPrice === '20to50')  return p >= 20 && p <= 50;
-            if (urlPrice === 'over50')  return p > 50;
-            return true;
-          });
-        }
-
-        setCourses(sorted);
-        setTotal(res.meta?.total ?? sorted.length);
+    coursesApi
+      .list({
+        search:   urlSearch   || undefined,
+        category: urlCategory || undefined,
+        level:    urlLevel    || undefined,
+        page:     1,
+        limit:    PAGE_SIZE,
+      })
+      .then((res) => {
+        const filtered = applyClientFilters(res.data);
+        setCourses(filtered);
+        setTotal(res.meta?.total ?? res.data.length);
+        setHasMore(res.data.length >= PAGE_SIZE);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [urlSearch, urlCategory, urlLevel, urlSort, urlPrice, urlPage]);
+  // applyClientFilters changes when sort/price change, which correctly resets the list
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlSearch, urlCategory, urlLevel, applyClientFilters]);
 
-  const totalPages   = Math.ceil(total / PAGE_SIZE);
+  // Load next page and append
+  const fetchNextPage = useCallback(async () => {
+    if (loadingMore || loading || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+
+    try {
+      const res = await coursesApi.list({
+        search:   urlSearch   || undefined,
+        category: urlCategory || undefined,
+        level:    urlLevel    || undefined,
+        page:     nextPage,
+        limit:    PAGE_SIZE,
+      });
+
+      if (res.data.length === 0) {
+        setHasMore(false);
+      } else {
+        const filtered = applyClientFilters(res.data);
+        setCourses((prev) => {
+          // Deduplicate — guard against race conditions
+          const seen = new Set(prev.map((c) => c.id));
+          return [...prev, ...filtered.filter((c) => !seen.has(c.id))];
+        });
+        setPage(nextPage);
+        setHasMore(res.data.length >= PAGE_SIZE);
+      }
+    } catch {
+      // silently ignore network errors
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, loading, hasMore, page, urlSearch, urlCategory, urlLevel, applyClientFilters]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    onLoadMore: fetchNextPage,
+    loading: loadingMore,
+    hasMore,
+  });
+
+  // Active filter chips
   const activeChips: { label: string; clear: () => void }[] = [];
-
-  if (urlSearch)   activeChips.push({ label: `"${urlSearch}"`,    clear: () => pushParams({ search: '' }) });
-  if (urlCategory) activeChips.push({ label: urlCategory,         clear: () => pushParams({ category: '' }) });
-  if (urlLevel)    activeChips.push({ label: urlLevel,            clear: () => pushParams({ level: '' }) });
+  if (urlSearch)   activeChips.push({ label: `"${urlSearch}"`,   clear: () => pushParams({ search: '' }) });
+  if (urlCategory) activeChips.push({ label: urlCategory,        clear: () => pushParams({ category: '' }) });
+  if (urlLevel)    activeChips.push({ label: urlLevel,           clear: () => pushParams({ level: '' }) });
   if (urlPrice) {
-    const priceLabel = { free: 'Free', under20: 'Under $20', '20to50': '$20–$50', over50: 'Over $50' }[urlPrice] ?? urlPrice;
+    const priceLabel =
+      { free: 'Free', under20: 'Under $20', '20to50': '$20–$50', over50: 'Over $50' }[urlPrice] ??
+      urlPrice;
     activeChips.push({ label: priceLabel, clear: () => pushParams({ price: '' }) });
   }
 
-  const clearAll = () => pushParams({ search: '', category: '', level: '', price: '', sort: '', page: '1' });
+  const clearAll = () =>
+    pushParams({ search: '', category: '', level: '', price: '', sort: '' });
 
   return (
     <div className="min-h-screen bg-ink-50">
@@ -210,10 +225,10 @@ export default function CourseBrowsePage() {
         {/* ── Search bar ── */}
         <div className="mb-6">
           <form
-            onSubmit={e => {
+            onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              pushParams({ search: fd.get('q') as string ?? '' });
+              pushParams({ search: (fd.get('q') as string) ?? '' });
             }}
             className="flex gap-2 max-w-lg"
           >
@@ -240,9 +255,9 @@ export default function CourseBrowsePage() {
             activeCategory={urlCategory}
             activeLevel={urlLevel}
             activePrice={urlPrice}
-            onCategory={v => pushParams({ category: v })}
-            onLevel={v    => pushParams({ level: v })}
-            onPrice={v    => pushParams({ price: v })}
+            onCategory={(v) => pushParams({ category: v })}
+            onLevel={(v)    => pushParams({ level: v })}
+            onPrice={(v)    => pushParams({ price: v })}
             onClearAll={clearAll}
           />
 
@@ -271,7 +286,10 @@ export default function CourseBrowsePage() {
                   {loading ? (
                     <span className="inline-block w-24 h-4 rounded bg-ink-100 animate-pulse" />
                   ) : (
-                    <><span className="font-semibold text-ink-900">{total.toLocaleString()}</span> results</>
+                    <>
+                      <span className="font-semibold text-ink-900">{total.toLocaleString()}</span>{' '}
+                      results
+                    </>
                   )}
                 </p>
               </div>
@@ -279,11 +297,11 @@ export default function CourseBrowsePage() {
               {/* Sort dropdown */}
               <select
                 value={urlSort}
-                onChange={e => pushParams({ sort: e.target.value })}
+                onChange={(e) => pushParams({ sort: e.target.value })}
                 className="select w-auto text-sm"
                 aria-label="Sort courses"
               >
-                {SORT_OPTIONS.map(o => (
+                {SORT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
@@ -292,7 +310,7 @@ export default function CourseBrowsePage() {
             {/* Active filter chips */}
             {activeChips.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-5">
-                {activeChips.map(chip => (
+                {activeChips.map((chip) => (
                   <FilterChip key={chip.label} label={chip.label} onRemove={chip.clear} />
                 ))}
                 <button
@@ -304,11 +322,12 @@ export default function CourseBrowsePage() {
               </div>
             )}
 
-            {/* Course grid */}
+            {/* ── Course grid ── */}
             {loading ? (
+              /* First-page skeleton — full grid */
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                  <SkeletonCard key={i} />
+                  <CourseCardSkeleton key={i} />
                 ))}
               </div>
             ) : courses.length === 0 ? (
@@ -323,18 +342,54 @@ export default function CourseBrowsePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {courses.map(course => (
-                  <CourseCard key={course.id} course={course} />
+                {courses.map((course, index) => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    priority={index < 4}
+                  />
                 ))}
               </div>
             )}
 
             {/* Pagination */}
             <Pagination
-              page={urlPage}
+              currentPage={urlPage}
               totalPages={totalPages}
-              onChange={p => pushParams({ page: String(p) })}
+              onPageChange={p => pushParams({ page: String(p) })}
+              className="mt-10"
             />
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {courses.map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+
+                {/* Skeleton row while next page loads */}
+                {loadingMore && (
+                  <div
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5"
+                    aria-live="polite"
+                    aria-label="Loading more courses"
+                  >
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <CourseCardSkeleton key={i} />
+                    ))}
+                  </div>
+                )}
+
+                {/* End-of-list message */}
+                {!hasMore && !loadingMore && (
+                  <p className="text-center text-sm text-ink-400 py-10 select-none">
+                    You've seen all courses
+                  </p>
+                )}
+
+                {/* Invisible sentinel — IntersectionObserver watches this */}
+                <div ref={sentinelRef} aria-hidden="true" className="h-1" />
+              </>
+            )}
           </div>
         </div>
       </div>
