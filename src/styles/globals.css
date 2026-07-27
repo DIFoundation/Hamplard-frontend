@@ -89,7 +89,14 @@
   .section-heading { color: var(--color-text-heading); font-family: var(--type-h3-family); font-size: var(--type-h3-size); line-height: var(--type-h3-line-height); letter-spacing: var(--type-h3-letter-spacing); font-weight: var(--type-h3-font-weight); }
 
   /* Course grid */
-  .course-grid {
+ .course-grid {
     @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
