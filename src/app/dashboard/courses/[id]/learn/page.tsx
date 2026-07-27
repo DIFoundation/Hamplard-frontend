@@ -4,12 +4,15 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight,
-  Download, Loader2, ArrowLeft,
+  Download, Loader2, ArrowLeft, MessageSquare, FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { coursesApi, enrollmentsApi, lessonsApi } from '@/lib/api/services';
 import { formatDuration, cn } from '@/lib/utils';
 import type { Course, Enrollment, Lesson, LessonProgress } from '@/types';
+import NotesPanel from '@/components/learn/NotesPanel';
+
+type SidebarTab = 'lessons' | 'notes' | 'qa';
 
 export default function LearnPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +23,8 @@ export default function LearnPage() {
   const [expanded,    setExpanded]    = useState<Record<string, boolean>>({});
   const [loading,     setLoading]     = useState(true);
   const [marking,     setMarking]     = useState(false);
+  const [sidebarTab,  setSidebarTab]  = useState<SidebarTab>('lessons');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -75,89 +80,153 @@ export default function LearnPage() {
 
   return (
     <div className="-m-6 flex h-[calc(100vh-3.5rem)] overflow-hidden">
-      {/* Lesson sidebar */}
-      <aside className="w-72 bg-white border-r border-ink-100 flex flex-col flex-shrink-0 overflow-y-auto">
-        {/* Header */}
-        <div className="p-4 border-b border-ink-100">
-          <Link href={`/dashboard/courses/${id}`}
-            className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 mb-2 transition-colors">
-            <ArrowLeft className="w-3 h-3" />
-            Back to overview
-          </Link>
-          <h2 className="text-sm font-semibold text-ink-900 line-clamp-2">{course.title}</h2>
-          <div className="mt-2.5">
-            <div className="flex justify-between text-xs text-ink-400 mb-1">
-              <span>{completedCount}/{totalLessons} lessons</span>
-              <span>{progress}%</span>
+      {/* Left sidebar – Lessons / Notes / Q&A tabs */}
+      <aside className="w-72 bg-white border-r border-ink-100 flex flex-col flex-shrink-0">
+        {/* Tab bar */}
+        <div className="flex border-b border-ink-100">
+          <button
+            onClick={() => setSidebarTab('lessons')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-3 transition-colors',
+              sidebarTab === 'lessons'
+                ? 'text-saffron-600 border-b-2 border-saffron-500'
+                : 'text-ink-400 hover:text-ink-600',
+            )}
+          >
+            <Circle className="w-3.5 h-3.5" />
+            Lessons
+          </button>
+          <button
+            onClick={() => setSidebarTab('notes')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-3 transition-colors',
+              sidebarTab === 'notes'
+                ? 'text-saffron-600 border-b-2 border-saffron-500'
+                : 'text-ink-400 hover:text-ink-600',
+            )}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Notes
+          </button>
+          <button
+            onClick={() => setSidebarTab('qa')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-3 transition-colors',
+              sidebarTab === 'qa'
+                ? 'text-saffron-600 border-b-2 border-saffron-500'
+                : 'text-ink-400 hover:text-ink-600',
+            )}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            Q&A
+          </button>
+        </div>
+
+        {/* Tab content */}
+        {sidebarTab === 'lessons' && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 border-b border-ink-100">
+              <Link href={`/dashboard/courses/${id}`}
+                className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 mb-2 transition-colors">
+                <ArrowLeft className="w-3 h-3" />
+                Back to overview
+              </Link>
+              <h2 className="text-sm font-semibold text-ink-900 line-clamp-2">{course.title}</h2>
+              <div className="mt-2.5">
+                <div className="flex justify-between text-xs text-ink-400 mb-1">
+                  <span>{completedCount}/{totalLessons} lessons</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
             </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${progress}%` }} />
+
+            {/* Modules + lessons */}
+            <div className="flex-1 overflow-y-auto">
+              {course.modules?.map((module, mi) => (
+                <div key={module.id} className="border-b border-ink-50">
+                  <button
+                    onClick={() => setExpanded((p) => ({ ...p, [module.id]: !p[module.id] }))}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-ink-50 transition-colors"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-ink-700">
+                        Module {mi + 1}: {module.title}
+                      </p>
+                      <p className="text-[10px] text-ink-400 mt-0.5">
+                        {module.lessons.filter((l) => isLessonCompleted(l.id)).length}/
+                        {module.lessons.length} done
+                      </p>
+                    </div>
+                    {expanded[module.id]
+                      ? <ChevronDown className="w-3.5 h-3.5 text-ink-400" />
+                      : <ChevronRight className="w-3.5 h-3.5 text-ink-400" />
+                    }
+                  </button>
+
+                  {expanded[module.id] && (
+                    <div className="pb-1">
+                      {module.lessons.map((lesson) => {
+                        const done    = isLessonCompleted(lesson.id);
+                        const active  = activeLesson?.id === lesson.id;
+                        return (
+                          <button
+                            key={lesson.id}
+                            onClick={() => setActiveLesson(lesson)}
+                            className={cn(
+                              'w-full flex items-start gap-2.5 px-4 py-2.5 text-left transition-colors',
+                              active ? 'bg-saffron-50' : 'hover:bg-ink-50',
+                            )}
+                          >
+                            {done
+                              ? <CheckCircle2 className="w-4 h-4 text-leaf-500 flex-shrink-0 mt-0.5" />
+                              : <Circle className={cn('w-4 h-4 flex-shrink-0 mt-0.5', active ? 'text-saffron-500' : 'text-ink-300')} />
+                            }
+                            <div className="min-w-0">
+                              <p className={cn(
+                                'text-xs leading-snug',
+                                active ? 'font-semibold text-saffron-700' : done ? 'text-ink-500' : 'text-ink-700',
+                              )}>
+                                {lesson.title}
+                              </p>
+                              {lesson.videoDuration && (
+                                <p className="text-[10px] text-ink-400 mt-0.5">
+                                  {formatDuration(lesson.videoDuration)}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Modules + lessons */}
-        <div className="flex-1">
-          {course.modules?.map((module, mi) => (
-            <div key={module.id} className="border-b border-ink-50">
-              <button
-                onClick={() => setExpanded((p) => ({ ...p, [module.id]: !p[module.id] }))}
-                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-ink-50 transition-colors"
-              >
-                <div>
-                  <p className="text-xs font-semibold text-ink-700">
-                    Module {mi + 1}: {module.title}
-                  </p>
-                  <p className="text-[10px] text-ink-400 mt-0.5">
-                    {module.lessons.filter((l) => isLessonCompleted(l.id)).length}/
-                    {module.lessons.length} done
-                  </p>
-                </div>
-                {expanded[module.id]
-                  ? <ChevronDown className="w-3.5 h-3.5 text-ink-400" />
-                  : <ChevronRight className="w-3.5 h-3.5 text-ink-400" />
-                }
-              </button>
+        {sidebarTab === 'notes' && activeLesson && (
+          <div className="flex-1 overflow-hidden">
+            <NotesPanel
+              courseId={id}
+              lectureId={activeLesson.id}
+              videoRef={videoRef}
+            />
+          </div>
+        )}
 
-              {expanded[module.id] && (
-                <div className="pb-1">
-                  {module.lessons.map((lesson) => {
-                    const done    = isLessonCompleted(lesson.id);
-                    const active  = activeLesson?.id === lesson.id;
-                    return (
-                      <button
-                        key={lesson.id}
-                        onClick={() => setActiveLesson(lesson)}
-                        className={cn(
-                          'w-full flex items-start gap-2.5 px-4 py-2.5 text-left transition-colors',
-                          active ? 'bg-saffron-50' : 'hover:bg-ink-50',
-                        )}
-                      >
-                        {done
-                          ? <CheckCircle2 className="w-4 h-4 text-leaf-500 flex-shrink-0 mt-0.5" />
-                          : <Circle className={cn('w-4 h-4 flex-shrink-0 mt-0.5', active ? 'text-saffron-500' : 'text-ink-300')} />
-                        }
-                        <div className="min-w-0">
-                          <p className={cn(
-                            'text-xs leading-snug',
-                            active ? 'font-semibold text-saffron-700' : done ? 'text-ink-500' : 'text-ink-700',
-                          )}>
-                            {lesson.title}
-                          </p>
-                          {lesson.videoDuration && (
-                            <p className="text-[10px] text-ink-400 mt-0.5">
-                              {formatDuration(lesson.videoDuration)}
-                            </p>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+        {sidebarTab === 'qa' && (
+          <div className="flex-1 flex items-center justify-center text-ink-400 px-4">
+            <div className="text-center">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-xs">Q&A coming soon</p>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </aside>
 
       {/* Main lesson content */}
@@ -168,6 +237,7 @@ export default function LearnPage() {
             {activeLesson.videoUrl && (
               <div className="aspect-video rounded-2xl overflow-hidden bg-black mb-5">
                 <video
+                  ref={videoRef}
                   key={activeLesson.videoUrl}
                   src={activeLesson.videoUrl}
                   controls
