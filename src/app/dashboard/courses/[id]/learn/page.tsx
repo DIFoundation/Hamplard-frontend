@@ -4,13 +4,53 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight,
-  Download, Loader2, ArrowLeft,
+  Download, Loader2, ArrowLeft, Award,
 } from 'lucide-react';
 import Link from 'next/link';
 import { coursesApi, enrollmentsApi, lessonsApi } from '@/lib/api/services';
 import { formatDuration, cn } from '@/lib/utils';
-import type { Course, Enrollment, Lesson, LessonProgress } from '@/types';
+import { QnaSection } from '@/components/player';
+import type { Course, Enrollment, Lesson, LessonProgress, QnaQuestion } from '@/types';
 
+/** Placeholder seed data until the Q&A API lands — one demo thread per lesson. */
+function seedQuestions(lesson: Lesson): QnaQuestion[] {
+  const now = Date.now();
+  return [
+    {
+      id: `${lesson.id}-q1`,
+      lessonId: lesson.id,
+      authorName: 'Amara Chukwu',
+      authorAvatarUrl: null,
+      title: `Quick question about "${lesson.title}"`,
+      body: "Could you clarify the step around the 4-minute mark? I'm not sure I followed the technique correctly.",
+      createdAt: new Date(now - 2 * 86_400_000).toISOString(),
+      upvotes: 6,
+      viewerUpvoted: false,
+      replies: [
+        {
+          id: `${lesson.id}-r1`,
+          authorName: 'Instructor',
+          authorAvatarUrl: null,
+          isInstructor: true,
+          text: 'Great question! Rewatch from 3:40 — the key is keeping steady pressure while you work. Let me know if it still feels off.',
+          createdAt: new Date(now - 1.5 * 86_400_000).toISOString(),
+        },
+      ],
+    },
+    {
+      id: `${lesson.id}-q2`,
+      lessonId: lesson.id,
+      authorName: 'Tunde Bakare',
+      authorAvatarUrl: null,
+      title: 'Any recommended tools for this?',
+      body: 'Wondering what alternatives work if I don\u2019t have the exact materials shown in the lesson.',
+      createdAt: new Date(now - 5 * 86_400_000).toISOString(),
+      upvotes: 2,
+      viewerUpvoted: false,
+      replies: [],
+    },
+  ];
+}
 export default function LearnPage() {
   const { id } = useParams<{ id: string }>();
 
@@ -226,7 +266,16 @@ export default function LearnPage() {
               </a>
             )}
 
-            {/* Completion celebration */}
+           {/* Q&A discussion */}
+            <div className="mt-8 pt-8 border-t border-ink-100">
+              <QnaSection
+                key={activeLesson.id}
+                lessonTitle={activeLesson.title}
+                questions={seedQuestions(activeLesson)}
+              />
+            </div>
+
+         {/* Completion celebration */}
             {progress === 100 && (
               <div className="card p-6 bg-gradient-to-br from-saffron-50 to-leaf-50 border-saffron-100 text-center">
                 <div className="text-4xl mb-3">🎓</div>
@@ -242,7 +291,7 @@ export default function LearnPage() {
                 </Link>
               </div>
             )}
-          </div>
+         </div>
         ) : (
           <div className="flex items-center justify-center h-full text-ink-400">
             <p className="text-sm">Select a lesson to start learning</p>
@@ -253,5 +302,4 @@ export default function LearnPage() {
   );
 }
 
-// Need to import Award inside LearnPage
-import { Award } from 'lucide-react';
+
