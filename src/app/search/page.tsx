@@ -11,6 +11,7 @@ import {
 } from '@/components/search/SearchResultsLoadingState';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Button } from '@/components/ui/Button';
+import { Pagination } from '@/components/ui/Pagination';
 import { useSearchStore } from '@/lib/hooks/use-search-store';
 import { cn } from '@/lib/utils';
 import type { Course } from '@/types';
@@ -423,45 +424,23 @@ function SearchPageContent() {
             ) : paginatedCourses.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-                  {paginatedCourses.map((course) => (
-                    <CourseCard key={course.id} course={course} />
+                  {paginatedCourses.map((course, index) => (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      priority={index < 3}
+                    />
                   ))}
                 </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 py-8 border-t border-ink-100">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 border border-ink-200 rounded-lg text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Previous
-                    </button>
-
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={cn(
-                          'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                          page === currentPage
-                            ? 'bg-hamplard-primary text-white'
-                            : 'border border-ink-200 text-ink-700 hover:bg-ink-50',
-                        )}
-                      >
-                        {page}
-                      </button>
-                    ))}
-
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-2 border border-ink-200 rounded-lg text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    className="py-8 border-t border-ink-100"
+                  />
                 )}
               </>
             ) : (

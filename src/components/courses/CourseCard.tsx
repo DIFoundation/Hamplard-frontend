@@ -2,12 +2,18 @@
 
 import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Clock, Heart, Star, Users } from 'lucide-react';
 import {
   cn, courseTotalMins, formatUsdc, levelChip,
 } from '@/lib/utils';
 import { useIsWishlisted, useWishlistStore } from '@/lib/hooks/use-wishlist-store';
 import type { Course } from '@/types';
+
+// A 1×1 purple-toned blurred placeholder encoded as a base64 data URL.
+// Used as the blur placeholder while the real image loads.
+const BLUR_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAYAAAC09K7GAAAAHklEQVQI12NgYGD4z8BQDwAEgAF/QualIQAAAABJRU5ErkJggg==';
 
 type BadgeVariant = 'bestseller' | 'new' | 'hot';
 
@@ -21,9 +27,11 @@ interface Props {
   course: Course;
   href?: string;
   showProgress?: number;
+  /** Pass true for cards in the first visible row to load eagerly (no lazy loading). */
+  priority?: boolean;
 }
 
-export function CourseCard({ course, href, showProgress }: Props) {
+export function CourseCard({ course, href, showProgress, priority = false }: Props) {
   const dest = href ?? `/dashboard/courses/${course.id}`;
   const mins = courseTotalMins(course.totalDuration ?? 0);
 
@@ -75,11 +83,15 @@ export function CourseCard({ course, href, showProgress }: Props) {
         {/* ── Thumbnail ── */}
         <div className="relative aspect-video bg-gradient-to-br from-saffron-100 to-saffron-200 overflow-hidden">
           {course.thumbnailUrl ? (
-            <img
+            <Image
               src={course.thumbnailUrl}
               alt={course.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              priority={priority}
+              placeholder="blur"
+              blurDataURL={BLUR_DATA_URL}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">

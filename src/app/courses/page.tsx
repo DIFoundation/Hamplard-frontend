@@ -7,6 +7,7 @@ import { coursesApi } from '@/lib/api/services';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { CourseCardSkeleton } from '@/components/courses/CourseCardSkeleton';
 import { FilterSidebar } from '@/components/courses/FilterSidebar';
+import { Pagination } from '@/components/ui/Pagination';
 import { useInfiniteScroll } from '@/lib/hooks/useInfiniteScroll';
 import { cn } from '@/lib/utils';
 import type { Course, Category } from '@/types';
@@ -340,6 +341,24 @@ function CourseBrowsePageContent() {
                 </button>
               </div>
             ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {courses.map((course, index) => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    priority={index < 4}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            <Pagination
+              currentPage={urlPage}
+              totalPages={totalPages}
+              onPageChange={p => pushParams({ page: String(p) })}
+              className="mt-10"
+            />
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                   {courses.map((course) => (
