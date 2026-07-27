@@ -5,6 +5,7 @@ import { certificatesApi } from '@/lib/api/services';
 import { formatDate, shortAddress } from '@/lib/utils';
 import { Award, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { SocialShare } from '@/components/ui/SocialShare';
 
 interface Props { params: { id: string } }
 
@@ -114,8 +115,16 @@ export default async function CertificateVerifyPage({ params }: Props) {
               </div>
 
               {/* Actions */}
-              <div className="mt-6">
-                <CertificateActions certificateId={cert.id} />
+              <div className="mt-6 space-y-4">
+                <CertificateActions certificateId={cert.id} courseTitle={cert.courseTitle} />
+                <div>
+                  <p className="text-xs text-ink-400 mb-2">Share your achievement</p>
+                  <SocialShare
+                    courseTitle={cert.courseTitle}
+                    variant="label"
+                    size="md"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -127,8 +136,10 @@ export default async function CertificateVerifyPage({ params }: Props) {
 
 function CertificateActions({
   certificateId,
+  courseTitle,
 }: {
   certificateId: string;
+  courseTitle: string;
 }) {
   'use client';
 
