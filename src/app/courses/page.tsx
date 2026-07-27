@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { coursesApi } from '@/lib/api/services';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { FilterSidebar } from '@/components/courses/FilterSidebar';
+import { Pagination } from '@/components/ui/Pagination';
 import { cn } from '@/lib/utils';
 import type { Course, Category } from '@/types';
 
@@ -47,59 +48,6 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
         <X className="w-3 h-3" />
       </button>
     </span>
-  );
-}
-
-// ── Pagination ────────────────────────────────────────────────────
-function Pagination({
-  page, totalPages, onChange,
-}: {
-  page: number; totalPages: number; onChange: (p: number) => void;
-}) {
-  if (totalPages <= 1) return null;
-
-  const pages = Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-    if (totalPages <= 5) return i + 1;
-    if (page <= 3)       return i + 1;
-    if (page >= totalPages - 2) return totalPages - 4 + i;
-    return page - 2 + i;
-  });
-
-  return (
-    <div className="flex items-center justify-center gap-1 mt-10">
-      <button
-        onClick={() => onChange(page - 1)}
-        disabled={page === 1}
-        className="btn-secondary p-2 disabled:opacity-40"
-        aria-label="Previous page"
-      >
-        <ChevronLeft className="w-4 h-4" />
-      </button>
-
-      {pages.map(p => (
-        <button
-          key={p}
-          onClick={() => onChange(p)}
-          className={cn(
-            'w-9 h-9 rounded-xl text-sm font-medium transition-all',
-            p === page
-              ? 'bg-saffron-500 text-white shadow-sm'
-              : 'text-ink-600 hover:bg-ink-50',
-          )}
-        >
-          {p}
-        </button>
-      ))}
-
-      <button
-        onClick={() => onChange(page + 1)}
-        disabled={page === totalPages}
-        className="btn-secondary p-2 disabled:opacity-40"
-        aria-label="Next page"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </button>
-    </div>
   );
 }
 
@@ -323,17 +271,22 @@ export default function CourseBrowsePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {courses.map(course => (
-                  <CourseCard key={course.id} course={course} />
+                {courses.map((course, index) => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    priority={index < 4}
+                  />
                 ))}
               </div>
             )}
 
             {/* Pagination */}
             <Pagination
-              page={urlPage}
+              currentPage={urlPage}
               totalPages={totalPages}
-              onChange={p => pushParams({ page: String(p) })}
+              onPageChange={p => pushParams({ page: String(p) })}
+              className="mt-10"
             />
           </div>
         </div>
