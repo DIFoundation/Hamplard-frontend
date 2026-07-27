@@ -199,7 +199,7 @@ export default function CourseDetailPage() {
                 }
               </button>
             ) : (
-              <Link href={`/auth/login?callbackUrl=/dashboard/courses/${id}`}
+              <Link href={`/login?callbackUrl=/dashboard/courses/${id}`}
                 className="btn-primary w-full text-base py-3 text-center block">
                 Sign in to enroll
               </Link>
