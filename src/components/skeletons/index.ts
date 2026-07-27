@@ -1,3 +1,8 @@
 export { CourseCardSkeleton } from './CourseCardSkeleton';
-export { DashboardSkeleton } from './DashboardSkeleton';
+export {
+  DashboardSkeleton,
+  QuickStatsSkeleton,
+  ContinueLearningSkeletonList,
+  CourseGridSkeleton,
+} from './DashboardSkeleton';
 export { CourseDetailSkeleton } from './CourseDetailSkeleton';

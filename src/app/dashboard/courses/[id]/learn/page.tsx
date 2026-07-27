@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight,
@@ -9,9 +9,9 @@ import {
 import Link from 'next/link';
 import { coursesApi, enrollmentsApi, lessonsApi } from '@/lib/api/services';
 import { formatDuration, cn } from '@/lib/utils';
+import { VideoPlayer } from '@/components/learn/VideoPlayer';
 import { QnaSection } from '@/components/player';
-import type { Course, Enrollment, Lesson, LessonProgress, QnaQuestion } from '@/types';
-
+import type { Course, Enrollment, Lesson, QnaQuestion } from '@/types';
 /** Placeholder seed data until the Q&A API lands — one demo thread per lesson. */
 function seedQuestions(lesson: Lesson): QnaQuestion[] {
   const now = Date.now();
@@ -54,13 +54,12 @@ function seedQuestions(lesson: Lesson): QnaQuestion[] {
 export default function LearnPage() {
   const { id } = useParams<{ id: string }>();
 
-  const [course,      setCourse]      = useState<Course | null>(null);
-  const [enrollment,  setEnrollment]  = useState<Enrollment | null>(null);
-  const [activeLesson,setActiveLesson]= useState<Lesson | null>(null);
-  const [expanded,    setExpanded]    = useState<Record<string, boolean>>({});
-  const [loading,     setLoading]     = useState(true);
-  const [marking,     setMarking]     = useState(false);
-  const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const [course,       setCourse]       = useState<Course | null>(null);
+  const [enrollment,   setEnrollment]   = useState<Enrollment | null>(null);
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+  const [expanded,     setExpanded]     = useState<Record<string, boolean>>({});
+  const [loading,      setLoading]      = useState(true);
+  const [marking,      setMarking]      = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -71,18 +70,16 @@ export default function LearnPage() {
       setEnrollment(e);
       // Open first module by default
       if (c.modules?.[0]) setExpanded({ [c.modules[0].id]: true });
-      // Start from first incomplete lesson
-      const allLessons = c.modules?.flatMap((m) => m.lessons) ?? [];
+      // Resume from first incomplete lesson
+      const allLessons  = c.modules?.flatMap((m) => m.lessons) ?? [];
       const completedIds = new Set(
         e.lessonProgress?.filter((p) => p.completed).map((p) => p.lessonId),
       );
       const first = allLessons.find((l) => !completedIds.has(l.id)) ?? allLessons[0];
       if (first) setActiveLesson(first);
     })
-    .catch(console.error)
-    .finally(() => setLoading(false));
-
-    return () => { if (progressRef.current) clearInterval(progressRef.current); };
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [id]);
 
   const isLessonCompleted = (lessonId: string) =>
@@ -93,7 +90,6 @@ export default function LearnPage() {
     setMarking(true);
     try {
       await lessonsApi.markComplete(activeLesson.id, enrollment.id);
-      // Re-fetch enrollment to update progress
       const updated = await enrollmentsApi.get(id);
       setEnrollment(updated);
     } finally {
@@ -101,26 +97,49 @@ export default function LearnPage() {
     }
   };
 
+  /**
+   * Called by VideoPlayer when the video reaches 95% watched.
+   * Automatically marks the lesson complete so the student doesn't have to click.
+   */
+  const handleVideoComplete = async () => {
+    if (!activeLesson || !enrollment) return;
+    if (isLessonCompleted(activeLesson.id)) return; // already done
+    try {
+      await lessonsApi.markComplete(activeLesson.id, enrollment.id);
+      const updated = await enrollmentsApi.get(id);
+      setEnrollment(updated);
+    } catch {
+      // non-fatal — student can still click manually
+    }
+  };
+
   const totalLessons   = course?.modules?.flatMap((m) => m.lessons).length ?? 0;
   const completedCount = enrollment?.lessonProgress?.filter((p) => p.completed).length ?? 0;
   const progress       = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-  if (loading) return (
-    <div className="flex justify-center py-16">
-      <Loader2 className="w-6 h-6 text-saffron-500 animate-spin" />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="w-6 h-6 text-saffron-500 animate-spin" />
+      </div>
+    );
+  }
 
-  if (!course) return <div className="text-center py-16 text-ink-500">Course not found.</div>;
+  if (!course) {
+    return <div className="text-center py-16 text-ink-500">Course not found.</div>;
+  }
 
   return (
     <div className="-m-6 flex h-[calc(100vh-3.5rem)] overflow-hidden">
-      {/* Lesson sidebar */}
+
+      {/* ── Lesson sidebar ─────────────────────────────────────────── */}
       <aside className="w-72 bg-white border-r border-ink-100 flex flex-col flex-shrink-0 overflow-y-auto">
         {/* Header */}
         <div className="p-4 border-b border-ink-100">
-          <Link href={`/dashboard/courses/${id}`}
-            className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 mb-2 transition-colors">
+          <Link
+            href={`/dashboard/courses/${id}`}
+            className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 mb-2 transition-colors"
+          >
             <ArrowLeft className="w-3 h-3" />
             Back to overview
           </Link>
@@ -141,7 +160,9 @@ export default function LearnPage() {
           {course.modules?.map((module, mi) => (
             <div key={module.id} className="border-b border-ink-50">
               <button
-                onClick={() => setExpanded((p) => ({ ...p, [module.id]: !p[module.id] }))}
+                onClick={() =>
+                  setExpanded((p) => ({ ...p, [module.id]: !p[module.id] }))
+                }
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-ink-50 transition-colors"
               >
                 <div>
@@ -154,7 +175,7 @@ export default function LearnPage() {
                   </p>
                 </div>
                 {expanded[module.id]
-                  ? <ChevronDown className="w-3.5 h-3.5 text-ink-400" />
+                  ? <ChevronDown  className="w-3.5 h-3.5 text-ink-400" />
                   : <ChevronRight className="w-3.5 h-3.5 text-ink-400" />
                 }
               </button>
@@ -162,8 +183,8 @@ export default function LearnPage() {
               {expanded[module.id] && (
                 <div className="pb-1">
                   {module.lessons.map((lesson) => {
-                    const done    = isLessonCompleted(lesson.id);
-                    const active  = activeLesson?.id === lesson.id;
+                    const done   = isLessonCompleted(lesson.id);
+                    const active = activeLesson?.id === lesson.id;
                     return (
                       <button
                         key={lesson.id}
@@ -175,12 +196,19 @@ export default function LearnPage() {
                       >
                         {done
                           ? <CheckCircle2 className="w-4 h-4 text-leaf-500 flex-shrink-0 mt-0.5" />
-                          : <Circle className={cn('w-4 h-4 flex-shrink-0 mt-0.5', active ? 'text-saffron-500' : 'text-ink-300')} />
+                          : <Circle className={cn(
+                              'w-4 h-4 flex-shrink-0 mt-0.5',
+                              active ? 'text-saffron-500' : 'text-ink-300',
+                            )} />
                         }
                         <div className="min-w-0">
                           <p className={cn(
                             'text-xs leading-snug',
-                            active ? 'font-semibold text-saffron-700' : done ? 'text-ink-500' : 'text-ink-700',
+                            active
+                              ? 'font-semibold text-saffron-700'
+                              : done
+                              ? 'text-ink-500'
+                              : 'text-ink-700',
                           )}>
                             {lesson.title}
                           </p>
@@ -200,30 +228,32 @@ export default function LearnPage() {
         </div>
       </aside>
 
-      {/* Main lesson content */}
+      {/* ── Main lesson content ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeLesson ? (
           <div className="max-w-3xl mx-auto">
-            {/* Video */}
+
+            {/* ── Video player ── */}
             {activeLesson.videoUrl && (
-              <div className="aspect-video rounded-2xl overflow-hidden bg-black mb-5">
-                <video
-                  key={activeLesson.videoUrl}
-                  src={activeLesson.videoUrl}
-                  controls
-                  className="w-full h-full"
-                  controlsList="nodownload"
-                />
-              </div>
+              <VideoPlayer
+                key={activeLesson.videoUrl}   // remount on lesson change
+                src={activeLesson.videoUrl}
+                captionsUrl={undefined}        // extend when captions are available
+                enrollmentId={enrollment?.id}
+                lessonId={activeLesson.id}
+                onComplete={handleVideoComplete}
+                className="aspect-video w-full mb-5"
+              />
             )}
 
-            {/* Text content */}
+            {/* ── Text content ── */}
             {activeLesson.type === 'TEXT' && activeLesson.content && (
               <div className="card p-6 mb-5 prose prose-sm max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: activeLesson.content }} />
               </div>
             )}
 
+            {/* ── Lesson header + Mark Complete ── */}
             <div className="flex items-start justify-between mb-5">
               <div>
                 <h1 className="font-display text-xl font-semibold text-ink-900 mb-1">
@@ -254,7 +284,7 @@ export default function LearnPage() {
               )}
             </div>
 
-            {/* Downloadable resource */}
+            {/* ── Downloadable resource ── */}
             {activeLesson.resourceUrl && (
               <a
                 href={activeLesson.resourceUrl}
@@ -266,7 +296,7 @@ export default function LearnPage() {
               </a>
             )}
 
-           {/* Q&A discussion */}
+{/* ── Q&A discussion ── */}
             <div className="mt-8 pt-8 border-t border-ink-100">
               <QnaSection
                 key={activeLesson.id}
@@ -275,7 +305,7 @@ export default function LearnPage() {
               />
             </div>
 
-         {/* Completion celebration */}
+            {/* ── Course completion celebration ── */}
             {progress === 100 && (
               <div className="card p-6 bg-gradient-to-br from-saffron-50 to-leaf-50 border-saffron-100 text-center">
                 <div className="text-4xl mb-3">🎓</div>
@@ -301,5 +331,3 @@ export default function LearnPage() {
     </div>
   );
 }
-
-
