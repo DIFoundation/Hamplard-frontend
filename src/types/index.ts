@@ -204,3 +204,36 @@ export interface RatingDistribution {
   /** Number of reviews with this star value */
   count: number;
 }
+
+// ── Lesson Q&A ────────────────────────────────────────────────────
+
+export type QnaSortOption = 'most_recent' | 'most_upvoted';
+export type QnaFilterOption = 'all' | 'mine' | 'unanswered';
+
+export interface QnaReply {
+  id: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  /** Distinguishes instructor replies so they can carry a badge */
+  isInstructor: boolean;
+  text: string;
+  /** ISO timestamp */
+  createdAt: string;
+}
+
+export interface QnaQuestion {
+  id: string;
+  lessonId?: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  /** Whether the current viewer authored this question — powers "My Questions" */
+  isViewerAuthor?: boolean;
+  title: string;
+  body: string;
+  /** ISO timestamp */
+  createdAt: string;
+  upvotes: number;
+  /** Whether the current viewer has upvoted this question */
+  viewerUpvoted?: boolean;
+  replies: QnaReply[];
+}
