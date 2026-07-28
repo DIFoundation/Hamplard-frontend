@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { coursesApi } from '@/lib/api/services';
+import { CourseCard } from '@/components/courses/CourseCard';
+import { CourseDetailSkeleton } from '@/components/skeletons';
 import { formatUsdc, courseTotalMins } from '@/lib/utils';
 import type { Course } from '@/types';
 
@@ -66,6 +68,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+  if (loading) return <CourseDetailSkeleton />;
+
+  if (!course) return (
+    <div className="card p-8 text-center">
+      <p className="text-sm font-medium text-ink-700">Course not found</p>
+    </div>
+  );
 export default async function CoursePage({ params }: Props) {
   let course: Course | null = null;
   let error = false;
