@@ -347,7 +347,7 @@ export function Header() {
                   {user?.avatarUrl ? (
                     <img
                       src={user.avatarUrl}
-                      alt=""
+                      alt={`${user?.name ?? 'User'} avatar`}
                       className="h-8 w-8 rounded-full object-cover ring-2 ring-white/20"
                     />
                   ) : (

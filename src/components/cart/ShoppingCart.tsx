@@ -77,7 +77,7 @@ export function ShoppingCart({ isOpen = true, onClose }: ShoppingCartProps) {
                 {item.course.thumbnailUrl ? (
                   <img
                     src={item.course.thumbnailUrl}
-                    alt={item.course.title}
+                    alt={`${item.course.title} course thumbnail`}
                     className="w-16 h-16 object-cover rounded-md flex-shrink-0"
                   />
                 ) : (
