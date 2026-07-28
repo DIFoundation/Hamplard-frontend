@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import type {
   ApiResponse, PaginatedResponse, Course, Enrollment,
   Certificate, Notification, User, Category,
+  Bundle, StudentEnrollmentRow, StudentDetail,
 } from '@/types';
 
 // ----------------------------------------------------------
@@ -266,5 +267,85 @@ export const uploadsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data.data as { url: string; filename: string; size: number };
+  },
+
+  uploadAvatar: async (
+    file: File,
+    onProgress?: (pct: number) => void,
+  ): Promise<{ url: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+
+    const token =
+      typeof window !== 'undefined' ? localStorage.getItem('hamplard_token') : null;
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(
+        'POST',
+        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1'}/uploads/avatar`,
+      );
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            resolve({ url: parsed?.data?.url ?? parsed?.url ?? '' });
+          } catch {
+            reject(new Error('Invalid response from server'));
+          }
+        } else {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error — please try again.'));
+      xhr.send(form);
+    });
+  },
+};
+
+// ----------------------------------------------------------
+// Bundles
+// ----------------------------------------------------------
+export const bundlesApi = {
+  getBySlug: async (slug: string) => {
+    const { data } = await apiClient.get<ApiResponse<Bundle>>(`/bundles/${slug}`);
+    return data.data;
+  },
+
+  list: async (): Promise<Bundle[]> => {
+    const { data } = await apiClient.get<ApiResponse<Bundle[]>>('/bundles');
+    return data.data;
+  },
+};
+
+// ----------------------------------------------------------
+// Instructor Student Analytics
+// ----------------------------------------------------------
+export const instructorAnalyticsApi = {
+  getStudents: async (params?: {
+    courseId?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<StudentEnrollmentRow>> => {
+    const { data } = await apiClient.get<ApiResponse<PaginatedResponse<StudentEnrollmentRow>>>(
+      '/users/me/instructor-students', { params },
+    );
+    return data.data;
+  },
+
+  getStudentDetail: async (studentId: string): Promise<StudentDetail> => {
+    const { data } = await apiClient.get<ApiResponse<StudentDetail>>(
+      `/users/me/instructor-students/${studentId}`,
+    );
+    return data.data;
   },
 };
