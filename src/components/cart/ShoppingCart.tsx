@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ShoppingBag, X, ArrowRight } from 'lucide-react';
 import { useCartStore } from '@/lib/hooks/use-cart-store';
 import { Button } from '@/components/ui/Button';
@@ -13,16 +14,14 @@ interface ShoppingCartProps {
 }
 
 export function ShoppingCart({ isOpen = true, onClose }: ShoppingCartProps) {
+  const router = useRouter();
   const { items, removeItem, clearCart, getTotalPrice } = useCartStore();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const totalPrice = getTotalPrice();
   const itemCount = items.length;
 
-  const handleCheckout = async () => {
-    setIsCheckingOut(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsCheckingOut(false);
+  const handleCheckout = () => {
+    router.push('/checkout');
   };
 
   if (!isOpen) return null;
@@ -143,8 +142,6 @@ export function ShoppingCart({ isOpen = true, onClose }: ShoppingCartProps) {
               fullWidth
               variant="primary"
               size="lg"
-              isLoading={isCheckingOut}
-              loadingText="Processing..."
               onClick={handleCheckout}
               icon={<ArrowRight className="w-4 h-4" />}
               iconPosition="right"
