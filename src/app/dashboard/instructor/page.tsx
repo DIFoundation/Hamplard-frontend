@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Users, DollarSign, BookOpen, Clock } from 'lucide-react';
+import { Plus, Users, DollarSign, BookOpen, Clock, Ticket } from 'lucide-react';
 import { usersApi, coursesApi } from '@/lib/api/services';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { courseStatusBadge, formatUsdc } from '@/lib/utils';
@@ -25,10 +25,16 @@ export default function InstructorDashboardPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="section-heading">Instructor Dashboard</h1>
-        <Link href="/dashboard/courses/create" className="btn-primary">
-          <Plus className="w-4 h-4" />
-          New course
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/instructor/promo-codes" className="btn-secondary flex items-center gap-2">
+            <Ticket className="w-4 h-4" />
+            Promo Codes
+          </Link>
+          <Link href="/dashboard/courses/create" className="btn-primary">
+            <Plus className="w-4 h-4" />
+            New course
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}

@@ -349,3 +349,39 @@ export const instructorAnalyticsApi = {
     return data.data;
   },
 };
+
+// ----------------------------------------------------------
+// Promo Codes
+// ----------------------------------------------------------
+export const promoCodesApi = {
+  create: async (payload: {
+    code: string;
+    discountType: 'PERCENTAGE' | 'FIXED';
+    discountValue: number;
+    expiryDate: string;
+    maxUses: number;
+  }) => {
+    const { data } = await apiClient.post('/promo-codes', payload);
+    return data.data;
+  },
+
+  getMy: async (params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<any>> => {
+    const { data } = await apiClient.get<ApiResponse<PaginatedResponse<any>>>(
+      '/promo-codes/my', { params },
+    );
+    return data.data;
+  },
+
+  toggleActive: async (promoCodeId: string, isActive: boolean) => {
+    const { data } = await apiClient.patch(`/promo-codes/${promoCodeId}`, { isActive });
+    return data.data;
+  },
+
+  validate: async (code: string, courseId: string) => {
+    const { data } = await apiClient.post(`/promo-codes/validate`, { code, courseId });
+    return data.data;
+  },
+};
