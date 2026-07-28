@@ -20,7 +20,7 @@ apiClient.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('hamplard_token');
-      window.location.href = '/auth/login';
+      window.location.href = '/login';
     }
     return Promise.reject(err);
   },
