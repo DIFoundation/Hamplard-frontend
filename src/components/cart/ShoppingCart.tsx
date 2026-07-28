@@ -6,13 +6,14 @@ import { ShoppingBag, X, ArrowRight } from 'lucide-react';
 import { useCartStore } from '@/lib/hooks/use-cart-store';
 import { Button } from '@/components/ui/Button';
 import { formatUsdc } from '@/lib/utils';
+import { CheckoutErrorBoundary } from './CheckoutErrorBoundary';
 
 interface ShoppingCartProps {
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export function ShoppingCart({ isOpen = true, onClose }: ShoppingCartProps) {
+function ShoppingCartContent({ isOpen = true, onClose }: ShoppingCartProps) {
   const { items, removeItem, clearCart, getTotalPrice } = useCartStore();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
@@ -162,5 +163,13 @@ export function ShoppingCart({ isOpen = true, onClose }: ShoppingCartProps) {
         </div>
       )}
     </div>
+  );
+}
+
+export function ShoppingCart(props: ShoppingCartProps) {
+  return (
+    <CheckoutErrorBoundary>
+      <ShoppingCartContent {...props} />
+    </CheckoutErrorBoundary>
   );
 }
