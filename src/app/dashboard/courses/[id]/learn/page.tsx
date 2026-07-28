@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight,
@@ -36,18 +36,16 @@ export default function LearnPage() {
       setEnrollment(e);
       // Open first module by default
       if (c.modules?.[0]) setExpanded({ [c.modules[0].id]: true });
-      // Start from first incomplete lesson
-      const allLessons = c.modules?.flatMap((m) => m.lessons) ?? [];
+      // Resume from first incomplete lesson
+      const allLessons  = c.modules?.flatMap((m) => m.lessons) ?? [];
       const completedIds = new Set(
         e.lessonProgress?.filter((p) => p.completed).map((p) => p.lessonId),
       );
       const first = allLessons.find((l) => !completedIds.has(l.id)) ?? allLessons[0];
       if (first) setActiveLesson(first);
     })
-    .catch(console.error)
-    .finally(() => setLoading(false));
-
-    return () => { if (progressRef.current) clearInterval(progressRef.current); };
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [id]);
 
   const isLessonCompleted = (lessonId: string) =>
@@ -58,7 +56,6 @@ export default function LearnPage() {
     setMarking(true);
     try {
       await lessonsApi.markComplete(activeLesson.id, enrollment.id);
-      // Re-fetch enrollment to update progress
       const updated = await enrollmentsApi.get(id);
       setEnrollment(updated);
     } finally {
@@ -66,17 +63,37 @@ export default function LearnPage() {
     }
   };
 
+  /**
+   * Called by VideoPlayer when the video reaches 95% watched.
+   * Automatically marks the lesson complete so the student doesn't have to click.
+   */
+  const handleVideoComplete = async () => {
+    if (!activeLesson || !enrollment) return;
+    if (isLessonCompleted(activeLesson.id)) return; // already done
+    try {
+      await lessonsApi.markComplete(activeLesson.id, enrollment.id);
+      const updated = await enrollmentsApi.get(id);
+      setEnrollment(updated);
+    } catch {
+      // non-fatal — student can still click manually
+    }
+  };
+
   const totalLessons   = course?.modules?.flatMap((m) => m.lessons).length ?? 0;
   const completedCount = enrollment?.lessonProgress?.filter((p) => p.completed).length ?? 0;
   const progress       = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-  if (loading) return (
-    <div className="flex justify-center py-16">
-      <Loader2 className="w-6 h-6 text-saffron-500 animate-spin" />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="w-6 h-6 text-saffron-500 animate-spin" />
+      </div>
+    );
+  }
 
-  if (!course) return <div className="text-center py-16 text-ink-500">Course not found.</div>;
+  if (!course) {
+    return <div className="text-center py-16 text-ink-500">Course not found.</div>;
+  }
 
   return (
     <div className="-m-6 flex h-[calc(100vh-3.5rem)] overflow-hidden">
@@ -229,11 +246,12 @@ export default function LearnPage() {
         )}
       </aside>
 
-      {/* Main lesson content */}
+      {/* ── Main lesson content ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeLesson ? (
           <div className="max-w-3xl mx-auto">
-            {/* Video */}
+
+            {/* ── Video player ── */}
             {activeLesson.videoUrl && (
               <div className="aspect-video rounded-2xl overflow-hidden bg-black mb-5">
                 <video
@@ -247,13 +265,14 @@ export default function LearnPage() {
               </div>
             )}
 
-            {/* Text content */}
+            {/* ── Text content ── */}
             {activeLesson.type === 'TEXT' && activeLesson.content && (
               <div className="card p-6 mb-5 prose prose-sm max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: activeLesson.content }} />
               </div>
             )}
 
+            {/* ── Lesson header + Mark Complete ── */}
             <div className="flex items-start justify-between mb-5">
               <div>
                 <h1 className="font-display text-xl font-semibold text-ink-900 mb-1">
@@ -284,7 +303,7 @@ export default function LearnPage() {
               )}
             </div>
 
-            {/* Downloadable resource */}
+            {/* ── Downloadable resource ── */}
             {activeLesson.resourceUrl && (
               <a
                 href={activeLesson.resourceUrl}
@@ -296,7 +315,16 @@ export default function LearnPage() {
               </a>
             )}
 
-            {/* Completion celebration */}
+{/* ── Q&A discussion ── */}
+            <div className="mt-8 pt-8 border-t border-ink-100">
+              <QnaSection
+                key={activeLesson.id}
+                lessonTitle={activeLesson.title}
+                questions={seedQuestions(activeLesson)}
+              />
+            </div>
+
+            {/* ── Course completion celebration ── */}
             {progress === 100 && (
               <div className="card p-6 bg-gradient-to-br from-saffron-50 to-leaf-50 border-saffron-100 text-center">
                 <div className="text-4xl mb-3">🎓</div>
@@ -304,7 +332,7 @@ export default function LearnPage() {
                   Course complete!
                 </h2>
                 <p className="text-sm text-ink-500 mb-4">
-                  You've finished all lessons. Your certificate will be issued shortly.
+                  You&apos;ve finished all lessons. Your certificate will be issued shortly.
                 </p>
                 <Link href="/dashboard/certificates" className="btn-primary inline-flex">
                   <Award className="w-4 h-4" />
@@ -312,7 +340,7 @@ export default function LearnPage() {
                 </Link>
               </div>
             )}
-          </div>
+         </div>
         ) : (
           <div className="flex items-center justify-center h-full text-ink-400">
             <p className="text-sm">Select a lesson to start learning</p>

@@ -1,11 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { SearchBar } from '@/components/search/SearchBar';
+import {
+  FilterSidebarSkeleton,
+  ResultsCountSkeleton,
+  ResultsGridSkeleton,
+} from '@/components/search/SearchResultsLoadingState';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { Button } from '@/components/ui/Button';
+import { Pagination } from '@/components/ui/Pagination';
 import { useSearchStore } from '@/lib/hooks/use-search-store';
 import { cn } from '@/lib/utils';
 import type { Course } from '@/types';
@@ -174,7 +180,37 @@ const MOCK_COURSES: Course[] = [
 
 const CATEGORIES = Array.from(new Set(MOCK_COURSES.map((c) => c.category)));
 
+function SearchPageFallback() {
+  return (
+    <div className="min-h-screen bg-ink-50 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl animate-pulse space-y-6">
+        <div className="h-8 w-48 rounded bg-ink-100" />
+        <div className="h-12 w-full rounded-xl bg-ink-100" />
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="h-64 rounded-xl bg-ink-100" />
+          <div className="space-y-4">
+            <div className="h-10 w-40 rounded bg-ink-100" />
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="h-56 rounded-xl bg-ink-100" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchPageFallback />}>
+      <SearchPageContent />
+    </Suspense>
+  );
+}
+
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const { query, sortBy, setSortBy, selectedCategories, toggleCategory, clearFilters } =
     useSearchStore();
@@ -184,6 +220,7 @@ export default function SearchPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Initialize search from URL params
   useEffect(() => {
@@ -194,6 +231,16 @@ export default function SearchPage() {
       toggleCategory(initialCategory);
     }
   }, [initialQuery, initialCategory]);
+
+  useEffect(() => {
+    setIsLoading(true);
+
+    const timeoutId = window.setTimeout(() => {
+      setIsLoading(false);
+    }, 450);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [query, selectedCategories, sortBy, currentPage]);
 
   // Filter and sort courses
   const filteredCourses = useMemo(() => {
@@ -254,7 +301,7 @@ export default function SearchPage() {
             <div>
               <h1 className="text-2xl font-bold text-ink-900">Search Courses</h1>
               <p className="text-sm text-ink-500 mt-1">
-                {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} found
+                {isLoading ? <ResultsCountSkeleton /> : `${filteredCourses.length} course${filteredCourses.length !== 1 ? 's' : ''} found`}
               </p>
             </div>
           </div>
@@ -276,76 +323,82 @@ export default function SearchPage() {
             )}
           >
             <div className="sticky top-4 space-y-6">
-              {/* Filter Header */}
-              <div className="flex items-center justify-between lg:hidden mb-4">
-                <h2 className="text-lg font-semibold text-ink-900">Filters</h2>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="text-ink-500 hover:text-ink-900"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Sort */}
-              <div>
-                <label className="text-sm font-semibold text-ink-900 block mb-3">
-                  Sort By
-                </label>
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) =>
-                      setSortBy(e.target.value as any)
-                    }
-                    className="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-hamplard-primary appearance-none cursor-pointer"
-                  >
-                    <option value="relevance">Relevance</option>
-                    <option value="rating">Highest Rated</option>
-                    <option value="newest">Newest First</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Categories */}
-              <div>
-                <label className="text-sm font-semibold text-ink-900 block mb-3">
-                  Categories
-                </label>
-                <div className="space-y-2">
-                  {CATEGORIES.map((category) => (
-                    <label
-                      key={category}
-                      className="flex items-center gap-2 cursor-pointer hover:text-hamplard-primary transition-colors"
+              {isLoading ? (
+                <FilterSidebarSkeleton />
+              ) : (
+                <>
+                  {/* Filter Header */}
+                  <div className="flex items-center justify-between lg:hidden mb-4">
+                    <h2 className="text-lg font-semibold text-ink-900">Filters</h2>
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="text-ink-500 hover:text-ink-900"
                     >
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(category)}
-                        onChange={() => toggleCategory(category)}
-                        className="w-4 h-4 accent-hamplard-primary rounded cursor-pointer"
-                      />
-                      <span className="text-sm text-ink-700">{category}</span>
-                      <span className="text-xs text-ink-400 ml-auto">
-                        {MOCK_COURSES.filter((c) => c.category === category).length}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+                      ✕
+                    </button>
+                  </div>
 
-              {/* Clear Filters */}
-              {(query || selectedCategories.length > 0) && (
-                <Button
-                  variant="tertiary"
-                  size="md"
-                  fullWidth
-                  onClick={clearFilters}
-                >
-                  Clear All Filters
-                </Button>
+                  {/* Sort */}
+                  <div>
+                    <label className="text-sm font-semibold text-ink-900 block mb-3">
+                      Sort By
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={sortBy}
+                        onChange={(e) =>
+                          setSortBy(e.target.value as any)
+                        }
+                        className="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-hamplard-primary appearance-none cursor-pointer"
+                      >
+                        <option value="relevance">Relevance</option>
+                        <option value="rating">Highest Rated</option>
+                        <option value="newest">Newest First</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Categories */}
+                  <div>
+                    <label className="text-sm font-semibold text-ink-900 block mb-3">
+                      Categories
+                    </label>
+                    <div className="space-y-2">
+                      {CATEGORIES.map((category) => (
+                        <label
+                          key={category}
+                          className="flex items-center gap-2 cursor-pointer hover:text-hamplard-primary transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedCategories.includes(category)}
+                            onChange={() => toggleCategory(category)}
+                            className="w-4 h-4 accent-hamplard-primary rounded cursor-pointer"
+                          />
+                          <span className="text-sm text-ink-700">{category}</span>
+                          <span className="text-xs text-ink-400 ml-auto">
+                            {MOCK_COURSES.filter((c) => c.category === category).length}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Clear Filters */}
+                  {(query || selectedCategories.length > 0) && (
+                    <Button
+                      variant="tertiary"
+                      size="md"
+                      fullWidth
+                      onClick={clearFilters}
+                    >
+                      Clear All Filters
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </aside>
@@ -366,48 +419,28 @@ export default function SearchPage() {
             </div>
 
             {/* Results */}
-            {paginatedCourses.length > 0 ? (
+            {isLoading ? (
+              <ResultsGridSkeleton />
+            ) : paginatedCourses.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-                  {paginatedCourses.map((course) => (
-                    <CourseCard key={course.id} course={course} />
+                  {paginatedCourses.map((course, index) => (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      priority={index < 3}
+                    />
                   ))}
                 </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 py-8 border-t border-ink-100">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 border border-ink-200 rounded-lg text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Previous
-                    </button>
-
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={cn(
-                          'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                          page === currentPage
-                            ? 'bg-hamplard-primary text-white'
-                            : 'border border-ink-200 text-ink-700 hover:bg-ink-50',
-                        )}
-                      >
-                        {page}
-                      </button>
-                    ))}
-
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-2 border border-ink-200 rounded-lg text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    className="py-8 border-t border-ink-100"
+                  />
                 )}
               </>
             ) : (

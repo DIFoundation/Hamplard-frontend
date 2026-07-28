@@ -204,3 +204,98 @@ export interface RatingDistribution {
   /** Number of reviews with this star value */
   count: number;
 }
+
+// ── Lesson Q&A ────────────────────────────────────────────────────
+
+export type QnaSortOption = 'most_recent' | 'most_upvoted';
+export type QnaFilterOption = 'all' | 'mine' | 'unanswered';
+
+export interface QnaReply {
+  id: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  /** Distinguishes instructor replies so they can carry a badge */
+  isInstructor: boolean;
+  text: string;
+  /** ISO timestamp */
+  createdAt: string;
+}
+
+export interface QnaQuestion {
+  id: string;
+  lessonId?: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  /** Whether the current viewer authored this question — powers "My Questions" */
+  isViewerAuthor?: boolean;
+  title: string;
+  body: string;
+  /** ISO timestamp */
+  createdAt: string;
+  upvotes: number;
+  /** Whether the current viewer has upvoted this question */
+  viewerUpvoted?: boolean;
+  replies: QnaReply[];
+}
+
+// ── Bundles ───────────────────────────────────────────────────────────────
+
+export interface Bundle {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  totalValue: number;       // sum of individual course prices
+  bundlePrice: number;      // discounted price
+  courses: Course[];
+  relatedBundles?: BundleSummary[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BundleSummary {
+  id: string;
+  slug: string;
+  title: string;
+  thumbnailUrl: string | null;
+  bundlePrice: number;
+  totalValue: number;
+  courseCount: number;
+}
+
+// ── Instructor Student Analytics ─────────────────────────────────────────
+
+export interface StudentEnrollmentRow {
+  studentId: string;
+  studentName: string | null;
+  studentEmail: string | null;
+  studentAvatarUrl: string | null;
+  courseId: string;
+  courseTitle: string;
+  enrolledAt: string;
+  progressPercent: number;
+  lastActiveAt: string | null;
+}
+
+export interface LessonProgressDetail {
+  lessonId: string;
+  lessonTitle: string;
+  completed: boolean;
+  watchedSecs: number;
+  completedAt: string | null;
+}
+
+export interface StudentDetail {
+  studentId: string;
+  studentName: string | null;
+  studentEmail: string | null;
+  studentAvatarUrl: string | null;
+  enrollments: Array<{
+    courseId: string;
+    courseTitle: string;
+    enrolledAt: string;
+    progressPercent: number;
+    lessonProgress: LessonProgressDetail[];
+  }>;
+}
