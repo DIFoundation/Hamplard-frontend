@@ -25,6 +25,12 @@ export const authApi = {
     >('/auth/login', payload);
     return data.data;
   },
+  loginWithEmail: async (payload: { email: string; password: string }) => {
+    const { data } = await apiClient.post<
+      ApiResponse<{ accessToken: string; user: User }>
+    >('/auth/email/login', payload);
+    return data.data;
+  },
 };
 
 // ----------------------------------------------------------

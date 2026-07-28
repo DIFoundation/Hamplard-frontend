@@ -3,18 +3,40 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BookOpen, Video, BarChart2, Bell, Award, LogOut,
+  BookOpen,
+  Video,
+  BarChart2,
+  Bell,
+  Award,
+  Heart,
+  LogOut,
+  User,
+  Settings,
+  type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/hooks/use-auth-store';
+import { useWishlistCount } from '@/lib/hooks/use-wishlist-store';
 import { shortAddress, cn } from '@/lib/utils';
 
-const STUDENT_NAV = [
+interface NavItem {
+  href:  string;
+  label: string;
+  icon:  LucideIcon;
+  /** Renders the saved-course count alongside the label. */
+  showWishlistCount?: boolean;
+}
+
+const STUDENT_NAV: NavItem[] = [
   { href: '/dashboard/courses',     label: 'My Courses',     icon: BookOpen },
+  { href: '/dashboard/wishlist',    label: 'Wishlist',       icon: Heart, showWishlistCount: true },
   { href: '/dashboard/certificates',label: 'Certificates',   icon: Award },
+  { href: '/dashboard/profile',    label: 'Profile',        icon: User },
+  { href: '/dashboard/settings',   label: 'Settings',       icon: Settings },
   { href: '/notifications',         label: 'Notifications',  icon: Bell },
 ];
 
-const INSTRUCTOR_NAV = [
+
+const INSTRUCTOR_NAV: NavItem[] = [
   { href: '/dashboard/instructor',  label: 'Dashboard',      icon: BarChart2 },
   { href: '/dashboard/courses',     label: 'My Courses',     icon: BookOpen },
   { href: '/dashboard/courses/create', label: 'New Course',  icon: Video },
@@ -24,6 +46,7 @@ const INSTRUCTOR_NAV = [
 export function Sidebar() {
   const pathname  = usePathname();
   const { user, address, logout } = useAuthStore();
+  const wishlistCount = useWishlistCount();
   const isInstructor = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
   const nav = isInstructor ? INSTRUCTOR_NAV : STUDENT_NAV;
 
@@ -43,7 +66,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {nav.map(({ href, label, icon: Icon }) => {
+        {nav.map(({ href, label, icon: Icon, showWishlistCount }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
             <Link key={href} href={href} className={cn(
@@ -54,6 +77,14 @@ export function Sidebar() {
             )}>
               <Icon className={cn('w-4 h-4', active ? 'text-saffron-600' : 'text-ink-400')} />
               {label}
+              {showWishlistCount && wishlistCount > 0 && (
+                <span
+                  className="ml-auto min-w-5 px-1.5 py-0.5 rounded-full bg-saffron-100 text-saffron-700 text-[10px] font-semibold text-center"
+                  aria-label={`${wishlistCount} saved course${wishlistCount !== 1 ? 's' : ''}`}
+                >
+                  {wishlistCount}
+                </span>
+              )}
             </Link>
           );
         })}

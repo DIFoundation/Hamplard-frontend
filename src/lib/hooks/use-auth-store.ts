@@ -6,7 +6,7 @@ interface AuthState {
   token:       string | null;
   user:        User | null;
   isConnected: boolean;
-  setAuth:    (address: string, token: string, user: User) => void;
+  setAuth:    (address: string, token: string, user: User, rememberMe?: boolean) => void;
   setAddress: (address: string) => void;
   logout:     () => void;
   rehydrate:  () => void;
@@ -15,11 +15,12 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   address: null, token: null, user: null, isConnected: false,
 
-  setAuth: (address, token, user) => {
+  setAuth: (address, token, user, rememberMe = false) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('hamplard_token', token);
       localStorage.setItem('hamplard_address', address);
-      document.cookie = `hamplard_token=${token}; path=/; max-age=${7 * 24 * 3600}; SameSite=Lax`;
+      const maxAge = rememberMe ? 30 * 24 * 3600 : 24 * 3600;
+      document.cookie = `hamplard_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
     }
     set({ address, token, user, isConnected: true });
   },

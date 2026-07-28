@@ -82,6 +82,10 @@ export interface Course {
   };
   modules: CourseModule[];
   _count: { enrollments: number };
+  rating?: number;
+  reviewCount?: number;
+  originalPrice?: number;
+  badge?: 'bestseller' | 'new' | 'hot';
 }
 
 export interface LessonProgress {
@@ -156,4 +160,80 @@ export interface PaginatedResponse<T> {
 export interface Category {
   name: string;
   count: number;
+}
+
+// ── Review & Rating ────────────────────────────────────────────────
+
+export type ReviewSortOption = 'most_recent' | 'most_helpful' | 'highest_rated' | 'lowest_rated';
+
+export interface InstructorReply {
+  /** Instructor's display name */
+  name: string;
+  /** Instructor avatar URL */
+  avatarUrl: string | null;
+  /** Reply body text */
+  text: string;
+  /** ISO timestamp of the reply */
+  repliedAt: string;
+}
+
+export interface Review {
+  id: string;
+  courseId: string;
+  /** Author display name */
+  authorName: string;
+  /** Author avatar URL — null falls back to initials avatar */
+  authorAvatarUrl: string | null;
+  /** 1–5 integer star rating */
+  rating: number;
+  /** Review body text */
+  text: string;
+  /** ISO timestamp */
+  createdAt: string;
+  /** Number of "helpful" votes */
+  helpfulVotes: number;
+  /** Whether the current viewer has voted this helpful */
+  viewerVoted?: boolean;
+  /** Optional instructor reply nested under this review */
+  instructorReply?: InstructorReply;
+}
+
+export interface RatingDistribution {
+  /** Star value (1–5) */
+  stars: number;
+  /** Number of reviews with this star value */
+  count: number;
+}
+
+// ── Lesson Q&A ────────────────────────────────────────────────────
+
+export type QnaSortOption = 'most_recent' | 'most_upvoted';
+export type QnaFilterOption = 'all' | 'mine' | 'unanswered';
+
+export interface QnaReply {
+  id: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  /** Distinguishes instructor replies so they can carry a badge */
+  isInstructor: boolean;
+  text: string;
+  /** ISO timestamp */
+  createdAt: string;
+}
+
+export interface QnaQuestion {
+  id: string;
+  lessonId?: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  /** Whether the current viewer authored this question — powers "My Questions" */
+  isViewerAuthor?: boolean;
+  title: string;
+  body: string;
+  /** ISO timestamp */
+  createdAt: string;
+  upvotes: number;
+  /** Whether the current viewer has upvoted this question */
+  viewerUpvoted?: boolean;
+  replies: QnaReply[];
 }
