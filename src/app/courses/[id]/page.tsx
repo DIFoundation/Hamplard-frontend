@@ -125,6 +125,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return (
     <div className="min-h-screen bg-ink-50 px-5 py-16">
+      <RecentlyViewedTracker courseId={course.id} />
       <div className="mx-auto max-w-6xl space-y-10">
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-ink-500 hover:text-ink-900 transition-colors">
           ← Back to Hamplard
