@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { coursesApi } from '@/lib/api/services';
-import { CourseCard } from '@/components/courses/CourseCard';
-import { CourseDetailSkeleton } from '@/components/skeletons';
 import { formatUsdc, courseTotalMins } from '@/lib/utils';
 import type { Course } from '@/types';
 
@@ -68,13 +66,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-  if (loading) return <CourseDetailSkeleton />;
-
-  if (!course) return (
-    <div className="card p-8 text-center">
-      <p className="text-sm font-medium text-ink-700">Course not found</p>
-    </div>
-  );
 export default async function CoursePage({ params }: Props) {
   let course: Course | null = null;
   let error = false;
@@ -107,6 +98,7 @@ export default async function CoursePage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-ink-50 px-5 py-16">
+      <RecentlyViewedTracker courseId={course.id} />
       <div className="mx-auto max-w-6xl space-y-10">
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-ink-500 hover:text-ink-900 transition-colors">
           ← Back to Hamplard
@@ -149,6 +141,6 @@ export default async function CoursePage({ params }: Props) {
           </aside>
         </div>
       </div>
-    </div>
+    </>
   );
 }
