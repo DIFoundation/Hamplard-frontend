@@ -1,6 +1,14 @@
 import { TopBar } from "@/components/layout/TopBar";
 import { HeroSection } from "@/components/layout/HeroSection";
 import { PricingPlansSection } from "@/components/pricing/PricingPlansSection";
+import { buildMetadata } from "@/lib/seo";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = buildMetadata({
+  description:
+    "Learn practical, job-ready skills online — tailoring, makeup, baking, photography and more. Enrol in expert-led courses and earn a verifiable certificate.",
+  path: "/",
+});
 import { HomepageCarousels, RecentlyViewed } from "@/components/home";
 
 const DEFAULT_OG_IMAGE = '/hamplard-og.svg';
