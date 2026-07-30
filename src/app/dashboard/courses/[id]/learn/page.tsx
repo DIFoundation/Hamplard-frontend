@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import {
   CheckCircle2, Circle, ChevronDown, ChevronRight,
@@ -13,6 +13,8 @@ import type { Course, Enrollment, Lesson, LessonProgress } from '@/types';
 import NotesPanel from '@/components/learn/NotesPanel';
 
 type SidebarTab = 'lessons' | 'notes' | 'qa';
+import CourseCompletionModal from '@/components/learn/CourseCompletionModal';
+import type { Course, Enrollment, Lesson, LessonProgress } from '@/types';
 
 export default function LearnPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +28,10 @@ export default function LearnPage() {
   const [sidebarTab,  setSidebarTab]  = useState<SidebarTab>('lessons');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const previousCompletedCountRef = useRef<number | null>(null);
+  const hasInitializedCompletionStateRef = useRef(false);
 
   useEffect(() => {
     Promise.all([
@@ -36,17 +42,49 @@ export default function LearnPage() {
       setEnrollment(e);
       // Open first module by default
       if (c.modules?.[0]) setExpanded({ [c.modules[0].id]: true });
-      // Resume from first incomplete lesson
-      const allLessons  = c.modules?.flatMap((m) => m.lessons) ?? [];
+      // Start from first incomplete lesson
+      const allLessons = c.modules?.flatMap((m) => m.lessons) ?? [];
       const completedIds = new Set(
         e.lessonProgress?.filter((p) => p.completed).map((p) => p.lessonId),
       );
       const first = allLessons.find((l) => !completedIds.has(l.id)) ?? allLessons[0];
       if (first) setActiveLesson(first);
     })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    .catch(console.error)
+    .finally(() => setLoading(false));
+
+    return () => { if (progressRef.current) clearInterval(progressRef.current); };
   }, [id]);
+
+  useEffect(() => {
+    if (!course || !enrollment) return;
+
+    const totalLessons = course.modules?.flatMap((m) => m.lessons).length ?? 0;
+    const completedCount = enrollment.lessonProgress?.filter((p) => p.completed).length ?? 0;
+    const isComplete = totalLessons > 0 && completedCount >= totalLessons;
+    const previouslyIncomplete = previousCompletedCountRef.current === null || previousCompletedCountRef.current < totalLessons;
+    const newlyCompleted = hasInitializedCompletionStateRef.current && previouslyIncomplete && isComplete;
+
+    previousCompletedCountRef.current = completedCount;
+    hasInitializedCompletionStateRef.current = true;
+
+    if (!isComplete) {
+      setShowCompletionModal(false);
+      return;
+    }
+
+    const storageKey = `course-completion:${course.id}`;
+    const hasSeenModal = typeof window !== 'undefined' && window.localStorage.getItem(storageKey) === 'true';
+
+    if (newlyCompleted && !hasSeenModal) {
+      setShowCompletionModal(true);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, 'true');
+      }
+    } else {
+      setShowCompletionModal(false);
+    }
+  }, [course, enrollment]);
 
   const isLessonCompleted = (lessonId: string) =>
     enrollment?.lessonProgress?.some((p) => p.lessonId === lessonId && p.completed) ?? false;
@@ -56,6 +94,7 @@ export default function LearnPage() {
     setMarking(true);
     try {
       await lessonsApi.markComplete(activeLesson.id, enrollment.id);
+      // Re-fetch enrollment to update progress
       const updated = await enrollmentsApi.get(id);
       setEnrollment(updated);
     } finally {
@@ -63,37 +102,19 @@ export default function LearnPage() {
     }
   };
 
-  /**
-   * Called by VideoPlayer when the video reaches 95% watched.
-   * Automatically marks the lesson complete so the student doesn't have to click.
-   */
-  const handleVideoComplete = async () => {
-    if (!activeLesson || !enrollment) return;
-    if (isLessonCompleted(activeLesson.id)) return; // already done
-    try {
-      await lessonsApi.markComplete(activeLesson.id, enrollment.id);
-      const updated = await enrollmentsApi.get(id);
-      setEnrollment(updated);
-    } catch {
-      // non-fatal — student can still click manually
-    }
-  };
-
   const totalLessons   = course?.modules?.flatMap((m) => m.lessons).length ?? 0;
   const completedCount = enrollment?.lessonProgress?.filter((p) => p.completed).length ?? 0;
   const progress       = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="w-6 h-6 text-saffron-500 animate-spin" />
-      </div>
-    );
-  }
+  const handleCloseCompletionModal = () => setShowCompletionModal(false);
 
-  if (!course) {
-    return <div className="text-center py-16 text-ink-500">Course not found.</div>;
-  }
+  if (loading) return (
+    <div className="flex justify-center py-16">
+      <Loader2 className="w-6 h-6 text-saffron-500 animate-spin" />
+    </div>
+  );
+
+  if (!course) return <div className="text-center py-16 text-ink-500">Course not found.</div>;
 
   return (
     <div className="-m-6 flex h-[calc(100vh-3.5rem)] overflow-hidden">
@@ -220,6 +241,92 @@ export default function LearnPage() {
                       })}
                     </div>
                   )}
+      {course && (
+        <CourseCompletionModal
+          open={showCompletionModal}
+          courseTitle={course.title}
+          courseId={course.id}
+          onClose={handleCloseCompletionModal}
+        />
+      )}
+      {/* Lesson sidebar */}
+      <aside className="w-72 bg-white border-r border-ink-100 flex flex-col flex-shrink-0 overflow-y-auto">
+        {/* Header */}
+        <div className="p-4 border-b border-ink-100">
+          <Link href={`/dashboard/courses/${id}`}
+            className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-ink-700 mb-2 transition-colors">
+            <ArrowLeft className="w-3 h-3" />
+            Back to overview
+          </Link>
+          <h2 className="text-sm font-semibold text-ink-900 line-clamp-2">{course.title}</h2>
+          <div className="mt-2.5">
+            <div className="flex justify-between text-xs text-ink-400 mb-1">
+              <span>{completedCount}/{totalLessons} lessons</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Modules + lessons */}
+        <div className="flex-1">
+          {course.modules?.map((module, mi) => (
+            <div key={module.id} className="border-b border-ink-50">
+              <button
+                onClick={() => setExpanded((p) => ({ ...p, [module.id]: !p[module.id] }))}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-ink-50 transition-colors"
+              >
+                <div>
+                  <p className="text-xs font-semibold text-ink-700">
+                    Module {mi + 1}: {module.title}
+                  </p>
+                  <p className="text-[10px] text-ink-400 mt-0.5">
+                    {module.lessons.filter((l) => isLessonCompleted(l.id)).length}/
+                    {module.lessons.length} done
+                  </p>
+                </div>
+                {expanded[module.id]
+                  ? <ChevronDown className="w-3.5 h-3.5 text-ink-400" />
+                  : <ChevronRight className="w-3.5 h-3.5 text-ink-400" />
+                }
+              </button>
+
+              {expanded[module.id] && (
+                <div className="pb-1">
+                  {module.lessons.map((lesson) => {
+                    const done    = isLessonCompleted(lesson.id);
+                    const active  = activeLesson?.id === lesson.id;
+                    return (
+                      <button
+                        key={lesson.id}
+                        onClick={() => setActiveLesson(lesson)}
+                        className={cn(
+                          'w-full flex items-start gap-2.5 px-4 py-2.5 text-left transition-colors',
+                          active ? 'bg-saffron-50' : 'hover:bg-ink-50',
+                        )}
+                      >
+                        {done
+                          ? <CheckCircle2 className="w-4 h-4 text-leaf-500 flex-shrink-0 mt-0.5" />
+                          : <Circle className={cn('w-4 h-4 flex-shrink-0 mt-0.5', active ? 'text-saffron-500' : 'text-ink-300')} />
+                        }
+                        <div className="min-w-0">
+                          <p className={cn(
+                            'text-xs leading-snug',
+                            active ? 'font-semibold text-saffron-700' : done ? 'text-ink-500' : 'text-ink-700',
+                          )}>
+                            {lesson.title}
+                          </p>
+                          {lesson.videoDuration && (
+                            <p className="text-[10px] text-ink-400 mt-0.5">
+                              {formatDuration(lesson.videoDuration)}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -246,12 +353,11 @@ export default function LearnPage() {
         )}
       </aside>
 
-      {/* ── Main lesson content ─────────────────────────────────────── */}
+      {/* Main lesson content */}
       <div className="flex-1 overflow-y-auto p-6">
         {activeLesson ? (
           <div className="max-w-3xl mx-auto">
-
-            {/* ── Video player ── */}
+            {/* Video */}
             {activeLesson.videoUrl && (
               <div className="aspect-video rounded-2xl overflow-hidden bg-black mb-5">
                 <video
@@ -265,14 +371,13 @@ export default function LearnPage() {
               </div>
             )}
 
-            {/* ── Text content ── */}
+            {/* Text content */}
             {activeLesson.type === 'TEXT' && activeLesson.content && (
               <div className="card p-6 mb-5 prose prose-sm max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: activeLesson.content }} />
               </div>
             )}
 
-            {/* ── Lesson header + Mark Complete ── */}
             <div className="flex items-start justify-between mb-5">
               <div>
                 <h1 className="font-display text-xl font-semibold text-ink-900 mb-1">
@@ -303,7 +408,7 @@ export default function LearnPage() {
               )}
             </div>
 
-            {/* ── Downloadable resource ── */}
+            {/* Downloadable resource */}
             {activeLesson.resourceUrl && (
               <a
                 href={activeLesson.resourceUrl}
@@ -315,17 +420,8 @@ export default function LearnPage() {
               </a>
             )}
 
-{/* ── Q&A discussion ── */}
-            <div className="mt-8 pt-8 border-t border-ink-100">
-              <QnaSection
-                key={activeLesson.id}
-                lessonTitle={activeLesson.title}
-                questions={seedQuestions(activeLesson)}
-              />
-            </div>
-
-            {/* ── Course completion celebration ── */}
-            {progress === 100 && (
+            {/* Completion celebration */}
+            {progress === 100 && !showCompletionModal && (
               <div className="card p-6 bg-gradient-to-br from-saffron-50 to-leaf-50 border-saffron-100 text-center">
                 <div className="text-4xl mb-3">🎓</div>
                 <h2 className="font-display text-xl font-semibold text-ink-900 mb-2">
@@ -340,7 +436,7 @@ export default function LearnPage() {
                 </Link>
               </div>
             )}
-         </div>
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full text-ink-400">
             <p className="text-sm">Select a lesson to start learning</p>
