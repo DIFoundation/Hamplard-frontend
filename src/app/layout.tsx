@@ -19,6 +19,8 @@ export const metadata: Metadata = {
     'Africa e-learning',
     'Hamplard',
   ],
+  description: 'Learn practical skills — tailoring, makeup, baking, photography and more. Africa\'s online vocational skills platform.',
+  metadataBase: new URL('https://hamplard.app'),
   icons: { icon: '/favicon.svg' },
   alternates: { canonical: siteUrl },
   openGraph: {

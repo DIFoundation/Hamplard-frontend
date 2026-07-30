@@ -27,7 +27,7 @@ interface NavItem {
 }
 
 const STUDENT_NAV: NavItem[] = [
-  { href: '/dashboard/courses',     label: 'My Courses',     icon: BookOpen },
+  { href: '/dashboard/my-courses',  label: 'My Courses',     icon: BookOpen },
   { href: '/dashboard/wishlist',    label: 'Wishlist',       icon: Heart, showWishlistCount: true },
   { href: '/dashboard/certificates',label: 'Certificates',   icon: Award },
   { href: '/dashboard/profile',    label: 'Profile',        icon: User },
@@ -35,11 +35,11 @@ const STUDENT_NAV: NavItem[] = [
   { href: '/notifications',         label: 'Notifications',  icon: Bell },
 ];
 
-
-const INSTRUCTOR_NAV: NavItem[] = [
+const INSTRUCTOR_NAV = [
   { href: '/dashboard/instructor',  label: 'Dashboard',      icon: BarChart2 },
   { href: '/dashboard/courses',     label: 'My Courses',     icon: BookOpen },
   { href: '/dashboard/courses/create', label: 'New Course',  icon: Video },
+  { href: '/dashboard/instructor/announcements', label: 'Announcements', icon: Bell },
   { href: '/notifications',         label: 'Notifications',  icon: Bell },
 ];
 
