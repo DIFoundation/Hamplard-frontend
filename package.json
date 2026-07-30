@@ -8,6 +8,9 @@
     "build": "next build",
     "start": "next start --port 3001",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {
@@ -29,13 +32,10 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "@storybook/addon-actions": "^9.0.8",
-    "@storybook/addon-links": "^10.5.5",
-    "@storybook/blocks": "^8.6.14",
-    "@storybook/nextjs": "^10.5.5",
-    "@tanstack/react-query-devtools": "^5.28.0",
+    "@playwright/test": "^1.62.0",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
