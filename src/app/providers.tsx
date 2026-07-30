@@ -7,6 +7,8 @@ import { ToastProvider } from '@/components/ui/ToastProvider';
 import { useAuthStore } from '@/lib/hooks/use-auth-store';
 import { createQueryClient } from '@/lib/query-client';
 
+const THEME_STORAGE_KEY = 'theme-preference';
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => createQueryClient());
   const rehydrate = useAuthStore((s) => s.rehydrate);

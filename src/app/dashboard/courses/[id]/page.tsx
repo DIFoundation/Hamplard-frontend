@@ -213,7 +213,7 @@ export default function CourseDetailPage() {
               {[
                 { icon: BookOpen, text: `${totalLessons} structured lessons` },
                 { icon: Clock,    text: `${Math.ceil((course.totalDuration ?? 0) / 60)}+ minutes of content` },
-                { icon: Award,    text: 'Blockchain-verified certificate' },
+                { icon: Award,    text: "Blockchain-verified certificate" },
               ].map(({ icon: Icon, text }) => (
                 <div key={text} className="flex items-center gap-2.5 text-xs text-ink-500">
                   <Icon className="w-3.5 h-3.5 text-saffron-500 flex-shrink-0" />

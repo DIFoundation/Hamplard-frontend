@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/Footer';
 export const metadata: Metadata = {
   title: { default: 'Hamplard', template: '%s | Hamplard' },
   description: 'Learn practical skills — tailoring, makeup, baking, photography and more. Africa\'s online vocational skills platform.',
+  metadataBase: new URL('https://hamplard.app'),
   icons: { icon: '/favicon.svg' },
 };
 

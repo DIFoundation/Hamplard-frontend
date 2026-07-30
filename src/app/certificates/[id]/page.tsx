@@ -1,13 +1,70 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import type { Metadata } from 'next';
 import { certificatesApi } from '@/lib/api/services';
 import { formatDate, shortAddress } from '@/lib/utils';
 import { Award, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { SocialShare } from '@/components/ui/SocialShare';
 
+const DEFAULT_OG_IMAGE = '/hamplard-og.svg';
+
+const DEFAULT_OG_IMAGE = '/hamplard-og.svg';
+
 interface Props { params: { id: string } }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const defaultTitle = 'Hamplard Certificate';
+  const defaultDescription =
+    'Verify Hamplard certificate ownership and completion details for students and courses.';
+
+  try {
+    const result = await certificatesApi.verify(params.id);
+    const cert = result?.certificate;
+    const studentName =
+      cert?.student?.name ||
+      (cert?.student?.stellarAddress ? shortAddress(cert.student.stellarAddress, 6) : 'Learner');
+    const courseTitle = cert?.courseTitle ?? cert?.course?.title ?? 'Hamplard course';
+    const title = `${studentName} • ${courseTitle} | Hamplard Certificate`;
+    const description = `${studentName} completed ${courseTitle} on Hamplard. Verify certificate ${params.id}.`;
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        url: `https://hamplard.app/certificates/${params.id}`,
+        siteName: 'Hamplard',
+        type: 'article',
+        images: [{ url: DEFAULT_OG_IMAGE, alt: title }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: [DEFAULT_OG_IMAGE],
+      },
+    };
+  } catch {
+    return {
+      title: defaultTitle,
+      description: defaultDescription,
+      openGraph: {
+        title: defaultTitle,
+        description: defaultDescription,
+        url: `https://hamplard.app/certificates/${params.id}`,
+        siteName: 'Hamplard',
+        type: 'article',
+        images: [{ url: DEFAULT_OG_IMAGE, alt: 'Hamplard Certificate' }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: defaultTitle,
+        description: defaultDescription,
+        images: [DEFAULT_OG_IMAGE],
+      },
+    };
+  }
+}
 
 export default async function CertificateVerifyPage({ params }: Props) {
   let result: any = null;
@@ -113,19 +170,6 @@ export default async function CertificateVerifyPage({ params }: Props) {
                   hamplard.com
                 </Link>
               </div>
-
-              {/* Actions */}
-              <div className="mt-6 space-y-4">
-                <CertificateActions certificateId={cert.id} courseTitle={cert.courseTitle} />
-                <div>
-                  <p className="text-xs text-ink-400 mb-2">Share your achievement</p>
-                  <SocialShare
-                    courseTitle={cert.courseTitle}
-                    variant="label"
-                    size="md"
-                  />
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -133,121 +177,3 @@ export default async function CertificateVerifyPage({ params }: Props) {
     </div>
   );
 }
-
-function CertificateActions({
-  certificateId,
-  courseTitle,
-}: {
-  certificateId: string;
-  courseTitle: string;
-}) {
-  'use client';
-
-  const [url, setUrl] = useState('');
-  const [downloading, setDownloading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-
-  useEffect(() => {
-    setUrl(`${window.location.origin}/certificates/${certificateId}`);
-  }, [certificateId]);
-
-  const safeShare = (shareUrl: string) => {
-    window.open(shareUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleCopy = async () => {
-    if (!url) return;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownloadPdf = async () => {
-    if (!url) return;
-    setDownloading(true);
-    try {
-      // Print-to-PDF flow (no new dependencies): open in a new tab and trigger the print dialog.
-      const w = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!w) return;
-      w.addEventListener('load', () => {
-        try {
-          w.focus();
-          w.print();
-        } catch {
-          // ignore
-        }
-      });
-    } finally {
-      setTimeout(() => setDownloading(false), 500);
-    }
-  };
-
-  if (!url) return null;
-
-  const encoded = encodeURIComponent(url);
-  const text = `I earned a Hamplard certificate: ${url}`;
-
-  return (
-    <div className="card p-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <p className="text-xs text-ink-400">Share or download your verification proof</p>
-          <p className="text-[11px] text-ink-500 font-mono mt-1 break-all">{url}</p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            disabled={downloading}
-            className="btn-secondary text-xs inline-flex items-center gap-2"
-          >
-            {downloading ? 'Preparing…' : 'Download PDF'}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="btn-ghost text-xs"
-          >
-            {copied ? 'Copied!' : 'Copy link'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => safeShare(`https://twitter.com/intent/tweet?url=${encoded}&text=${encodeURIComponent(text)}`)}
-            className="btn-ghost text-xs"
-          >
-            Share to X
-          </button>
-
-          <button
-            type="button"
-            onClick={() => safeShare(`https://www.facebook.com/sharer/sharer.php?u=${encoded}`)}
-            className="btn-ghost text-xs"
-          >
-            Facebook
-          </button>
-
-          <button
-            type="button"
-            onClick={() => safeShare(`https://www.linkedin.com/sharing/share-offsite/?url=${encoded}`)}
-            className="btn-ghost text-xs"
-          >
-            LinkedIn
-          </button>
-
-          <button
-            type="button"
-            onClick={() => safeShare(`https://wa.me/?text=${encodeURIComponent(text)}`)}
-            className="btn-ghost text-xs"
-          >
-            WhatsApp
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
