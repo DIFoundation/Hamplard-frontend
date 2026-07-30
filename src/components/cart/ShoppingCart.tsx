@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ShoppingBag, X, ArrowRight } from 'lucide-react';
 import { ShoppingBag, X, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useCartStore } from '@/lib/hooks/use-cart-store';
 import { promoCodesApi } from '@/lib/api/services';
@@ -14,6 +16,9 @@ interface ShoppingCartProps {
   onClose?: () => void;
 }
 
+export function ShoppingCart({ isOpen = true, onClose }: ShoppingCartProps) {
+  const router = useRouter();
+  const { items, removeItem, clearCart, getTotalPrice } = useCartStore();
 function ShoppingCartContent({ isOpen = true, onClose }: ShoppingCartProps) {
   const { items, removeItem, clearCart, getTotalPrice } = useCartStore();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -31,10 +36,8 @@ function ShoppingCartContent({ isOpen = true, onClose }: ShoppingCartProps) {
     : 0;
   const finalPrice = Math.max(0, totalPrice - discountAmount);
 
-  const handleCheckout = async () => {
-    setIsCheckingOut(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsCheckingOut(false);
+  const handleCheckout = () => {
+    router.push('/checkout');
   };
 
   const handleApplyPromo = async () => {
@@ -249,8 +252,6 @@ function ShoppingCartContent({ isOpen = true, onClose }: ShoppingCartProps) {
               fullWidth
               variant="primary"
               size="lg"
-              isLoading={isCheckingOut}
-              loadingText="Processing..."
               onClick={handleCheckout}
               icon={<ArrowRight className="w-4 h-4" />}
               iconPosition="right"
